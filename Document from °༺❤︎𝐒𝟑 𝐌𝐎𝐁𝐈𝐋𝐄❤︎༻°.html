@@ -1,0 +1,2562 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>S3 MOTORS POS | Bike & Three Wheel Parts</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            obsidian: '#0A0A0A',
+            onyx: '#121212',
+            charcoal: '#1A1A1A',
+            graphite: '#262626',
+            gold: {
+              DEFAULT: '#D4AF37',
+              light: '#F5D061',
+              dark: '#996515',
+              muted: 'rgba(212, 175, 55, 0.15)'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0A0A0A;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
+    .gold-gradient {
+      background: linear-gradient(135deg, #F5D061 0%, #D4AF37 50%, #996515 100%);
+    }
+    .gold-text-gradient {
+      background: linear-gradient(135deg, #FFF1B0 0%, #F5D061 40%, #D4AF37 80%, #996515 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .gold-shadow {
+      box-shadow: 0 4px 28px rgba(212, 175, 55, 0.22);
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0A0A0A;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2e2e2e;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #D4AF37;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-obsidian text-gray-100 antialiased selection:bg-gold selection:text-obsidian">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Custom Confirm Modal -->
+  <div id="confirm-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-onyx border border-gold/40 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <h3 id="confirm-title" class="text-lg font-bold text-gold mb-2">Confirm Action</h3>
+      <p id="confirm-message" class="text-sm text-gray-300 mb-6"></p>
+      <div class="flex justify-end gap-3">
+        <button id="confirm-cancel-btn" class="px-4 py-2.5 rounded-xl bg-charcoal hover:bg-graphite text-gray-300 text-sm font-medium transition">Cancel</button>
+        <button id="confirm-ok-btn" class="px-4 py-2.5 rounded-xl gold-gradient text-obsidian font-bold text-sm shadow-lg hover:opacity-90 transition">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen Bill Preview Modal -->
+  <div id="bill-preview-modal" class="fixed inset-0 z-[85] hidden items-center justify-center bg-black/85 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto">
+    <div class="bg-onyx border-2 border-gold/50 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl gold-shadow my-auto">
+      <div class="flex items-center justify-between border-b border-gold/25 pb-4 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-14 h-14 rounded-full bg-black border border-gold/50 overflow-hidden flex items-center justify-center shrink-0 shadow" data-s3-logo-slot="bill-modal"></div>
+          <div>
+            <h3 class="text-lg font-black gold-text-gradient tracking-tight">S3 MOTORS</h3>
+            <p class="text-[11px] font-bold text-gold/90 tracking-widest uppercase">BIKE &amp; THREE WHEEL PARTS</p>
+            <p id="modal-bill-meta" class="text-[11px] text-gray-400 font-mono mt-0.5"></p>
+          </div>
+        </div>
+        <button onclick="closeBillModal()" class="p-2 rounded-xl bg-charcoal hover:bg-graphite text-gray-400 hover:text-white transition">✕</button>
+      </div>
+
+      <div id="modal-bill-customer" class="bg-obsidian rounded-xl p-3 border border-gold/20 text-xs mb-3 flex justify-between items-center"></div>
+
+      <div class="max-h-56 overflow-y-auto border border-gold/20 rounded-xl mb-3">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-charcoal text-gold">
+            <tr>
+              <th class="p-2.5">Item</th>
+              <th class="p-2.5 text-center">Qty</th>
+              <th class="p-2.5 text-right">Price</th>
+              <th class="p-2.5 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody id="modal-bill-items" class="divide-y divide-gray-800"></tbody>
+        </table>
+      </div>
+
+      <div id="modal-bill-totals" class="bg-obsidian rounded-xl p-3.5 border border-gold/25 space-y-1 text-xs mb-4"></div>
+
+      <div class="flex flex-col sm:flex-row gap-2.5">
+        <button id="modal-download-pdf-btn" class="flex-1 py-3 rounded-xl gold-gradient text-obsidian font-extrabold text-sm shadow-lg hover:opacity-95 transition flex items-center justify-center gap-2">
+          <span>📄 Download PDF Bill</span>
+        </button>
+        <button onclick="closeBillModal()" class="py-3 px-5 rounded-xl bg-charcoal hover:bg-graphite text-gray-200 font-bold text-sm transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== LOGIN SCREEN ==================== -->
+  <div id="login-screen" class="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-obsidian via-onyx to-obsidian">
+    <div class="w-full max-w-md bg-onyx border border-gold/30 rounded-3xl p-6 sm:p-8 shadow-2xl gold-shadow">
+      <!-- S3 MOTORS Circular Black & Gold Emblem -->
+      <div class="flex flex-col items-center mb-5">
+        <div class="w-32 h-32 rounded-full bg-black border-2 border-gold/60 flex items-center justify-center mb-3 shadow-2xl gold-shadow overflow-hidden" data-s3-logo-slot="login"></div>
+        <h1 class="text-2xl sm:text-3xl font-black tracking-tight gold-text-gradient">S3 MOTORS POS</h1>
+        <p class="text-xs text-gold/80 font-semibold tracking-widest uppercase mt-0.5">Bike &amp; Three Wheel Parts</p>
+        <div id="cloud-status-badge" class="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-charcoal border border-gold/25 text-[11px] text-gray-300">
+          <span id="cloud-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="cloud-status-text">Cloud &amp; Real-Time Sync Ready</span>
+        </div>
+      </div>
+
+      <!-- Role Selector -->
+      <div class="grid grid-cols-2 gap-2 p-1.5 bg-obsidian rounded-2xl border border-gold/20 mb-4">
+        <button type="button" id="role-btn-admin" onclick="selectLoginRole('admin')" class="py-2.5 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 gold-gradient text-obsidian shadow">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          <span>Admin</span>
+        </button>
+        <button type="button" id="role-btn-staff" onclick="selectLoginRole('staff')" class="py-2.5 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-gold">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          <span>Staff</span>
+        </button>
+      </div>
+
+      <!-- PIN Dots Display -->
+      <div class="mb-4">
+        <label class="block text-center text-xs text-gray-400 mb-2">Enter Security PIN</label>
+        <div id="pin-dots" class="flex justify-center gap-3 py-3 px-4 bg-obsidian rounded-2xl border border-gold/25">
+          <span class="w-4 h-4 rounded-full border-2 border-gold/50 transition-all"></span>
+          <span class="w-4 h-4 rounded-full border-2 border-gold/50 transition-all"></span>
+          <span class="w-4 h-4 rounded-full border-2 border-gold/50 transition-all"></span>
+          <span class="w-4 h-4 rounded-full border-2 border-gold/50 transition-all"></span>
+        </div>
+        <p id="login-error" class="text-center text-xs text-red-400 mt-1.5 min-h-[16px]"></p>
+      </div>
+
+      <!-- Numeric Keypad -->
+      <div class="grid grid-cols-3 gap-2 mb-4">
+        <button type="button" onclick="appendPin('1')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">1</button>
+        <button type="button" onclick="appendPin('2')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">2</button>
+        <button type="button" onclick="appendPin('3')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">3</button>
+        <button type="button" onclick="appendPin('4')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">4</button>
+        <button type="button" onclick="appendPin('5')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">5</button>
+        <button type="button" onclick="appendPin('6')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">6</button>
+        <button type="button" onclick="appendPin('7')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">7</button>
+        <button type="button" onclick="appendPin('8')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">8</button>
+        <button type="button" onclick="appendPin('9')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">9</button>
+        <button type="button" onclick="clearPin()" class="h-12 sm:h-13 rounded-2xl bg-charcoal/70 hover:bg-red-950/50 active:scale-95 border border-red-500/20 text-xs font-bold text-red-400 transition">CLEAR</button>
+        <button type="button" onclick="appendPin('0')" class="h-12 sm:h-13 rounded-2xl bg-charcoal hover:bg-graphite active:scale-95 border border-gold/15 text-lg font-bold text-white transition">0</button>
+        <button type="button" onclick="backspacePin()" class="h-12 sm:h-13 rounded-2xl bg-charcoal/70 hover:bg-graphite active:scale-95 border border-gold/15 text-sm font-bold text-gold transition">⌫</button>
+      </div>
+
+      <button type="button" id="login-submit-btn" onclick="verifyLogin()" class="w-full py-3.5 rounded-2xl gold-gradient text-obsidian font-extrabold text-base tracking-wide shadow-lg hover:opacity-95 active:scale-[0.99] transition">
+        LOGIN
+      </button>
+
+      <p class="text-[11px] text-gray-500 text-center mt-3">
+        SHA-256 Encrypted PINs — Default Admin: <span class="text-gold/80 font-mono">1234</span> | Staff: <span class="text-gold/80 font-mono">0000</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN DASHBOARD APP ==================== -->
+  <div id="app-shell" class="hidden min-h-screen flex flex-col">
+    <!-- Top Sticky Header -->
+    <header class="sticky top-0 z-40 bg-onyx/95 backdrop-blur-md border-b border-gold/25 px-3 sm:px-6 py-2.5">
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        <!-- Brand Logo & Name -->
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-full bg-black border border-gold/60 flex items-center justify-center shrink-0 overflow-hidden shadow-md" data-s3-logo-slot="header"></div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base sm:text-lg font-black gold-text-gradient tracking-tight">S3 MOTORS POS</h1>
+              <span id="active-role-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gold/20 text-gold border border-gold/40">ADMIN</span>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-gray-400">
+              <span id="sync-indicator" class="inline-flex items-center gap-1 text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Real-Time Cloud Sync
+              </span>
+              <span class="hidden sm:inline">•</span>
+              <span id="header-clock" class="hidden sm:inline font-mono"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Controls: Settings Gear (Admin Only) & Logout -->
+        <div class="flex items-center gap-2">
+          <button id="header-settings-btn" onclick="switchTab('settings')" title="Settings, Logo & PIN Security" class="hidden p-2.5 rounded-xl bg-charcoal hover:bg-graphite border border-gold/30 text-gold transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </button>
+
+          <button onclick="logoutUser()" class="px-3.5 py-2 rounded-xl bg-charcoal hover:bg-red-950/60 border border-red-500/30 text-red-400 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="max-w-7xl mx-auto mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        <button data-tab="pos" onclick="switchTab('pos')" class="nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+          <span>🛒</span> <span>New Sale</span>
+        </button>
+        <button data-tab="inventory" onclick="switchTab('inventory')" class="nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+          <span>📦</span> <span>Stock Inventory</span>
+        </button>
+        <button data-tab="history" onclick="switchTab('history')" class="nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+          <span>🧾</span> <span>Bills &amp; Customers</span>
+        </button>
+        <button data-tab="returns" onclick="switchTab('returns')" class="nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+          <span>↩️</span> <span>Returns &amp; Refunds</span>
+        </button>
+        <button data-tab="purchases" onclick="switchTab('purchases')" class="admin-only-nav hidden nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+          <span>🚚</span> <span>Suppliers &amp; Purchases</span>
+        </button>
+        <button data-tab="reports" onclick="switchTab('reports')" class="admin-only-nav hidden nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+          <span>📊</span> <span>Profit &amp; Audit</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6">
+
+      <!-- ==================== TAB 1: NEW SALE (POS) ==================== -->
+      <section id="tab-pos" class="tab-panel grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Left: Search & Product Picker -->
+        <div class="lg:col-span-7 flex flex-col gap-4">
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <div class="flex flex-col sm:flex-row gap-2.5">
+              <div class="relative flex-1">
+                <input type="text" id="pos-search-input" oninput="renderPosCatalog()" placeholder="Search by item name, Code (S3M-), Rack (R01), or Bike/Three-Wheel Model..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-obsidian border border-gold/30 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gold" />
+                <svg class="w-5 h-5 text-gold absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              </div>
+              <select id="pos-rack-filter" onchange="renderPosCatalog()" class="px-3 py-3 rounded-xl bg-obsidian border border-gold/30 text-sm text-gray-200 focus:outline-none focus:border-gold">
+                <option value="">All Racks</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Available Stock Grid -->
+          <div id="pos-catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[66vh] overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Right: Current Bill Cart -->
+        <div class="lg:col-span-5">
+          <div class="bg-onyx border border-gold/35 rounded-2xl p-4 sm:p-5 shadow-xl sticky top-28">
+            <div class="flex items-center justify-between pb-3 border-b border-gold/20">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-black border border-gold/40 overflow-hidden shrink-0" data-s3-logo-slot="cart"></div>
+                <div>
+                  <h2 class="text-base font-bold text-gold">Current Bill</h2>
+                  <p class="text-xs text-gray-400">Next Bill: <span id="next-bill-preview" class="font-mono text-gold">INV-2026-0001</span></p>
+                </div>
+              </div>
+              <button onclick="clearCart()" class="text-xs text-red-400 hover:underline">Clear Cart</button>
+            </div>
+
+            <!-- Customer Details -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 my-3">
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Customer Name</label>
+                <input type="text" id="pos-cust-name" list="customer-datalist" oninput="autofillCustomerPhone()" placeholder="Walk-in Customer" class="w-full px-3 py-2 rounded-xl bg-obsidian border border-gold/25 text-xs text-white focus:outline-none focus:border-gold" />
+                <datalist id="customer-datalist"></datalist>
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Phone Number</label>
+                <input type="tel" id="pos-cust-phone" placeholder="07X XXXXXXX" class="w-full px-3 py-2 rounded-xl bg-obsidian border border-gold/25 text-xs text-white focus:outline-none focus:border-gold" />
+              </div>
+            </div>
+
+            <!-- Cart Items List -->
+            <div id="pos-cart-items" class="space-y-2 max-h-56 overflow-y-auto my-3 pr-1">
+              <div class="text-center py-8 text-xs text-gray-500">Select items from catalog</div>
+            </div>
+
+            <!-- Payment Type & Discount -->
+            <div class="border-t border-gold/20 pt-3 space-y-2.5">
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-[11px] text-gray-400 mb-1">Payment Type</label>
+                  <select id="pos-payment-type" class="w-full px-2.5 py-2 rounded-xl bg-obsidian border border-gold/30 text-xs font-semibold text-gold focus:outline-none">
+                    <option value="Cash">💵 Cash Sale</option>
+                    <option value="Credit">📝 Credit Sale</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] text-gray-400 mb-1">Discount Type</label>
+                  <select id="pos-discount-type" onchange="updateCartTotals()" class="w-full px-2.5 py-2 rounded-xl bg-obsidian border border-gold/30 text-xs text-gray-200 focus:outline-none">
+                    <option value="amount">Rs. (Amount)</option>
+                    <option value="percent">% (Percent)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] text-gray-400 mb-1">Discount Value</label>
+                  <input type="number" id="pos-discount-input" min="0" step="0.01" value="0" oninput="updateCartTotals()" class="w-full px-2.5 py-2 rounded-xl bg-obsidian border border-gold/30 text-xs font-bold text-white focus:outline-none focus:border-gold" />
+                </div>
+              </div>
+
+              <!-- Summary Calculations -->
+              <div class="bg-obsidian rounded-xl p-3 border border-gold/20 space-y-1 text-xs">
+                <div class="flex justify-between text-gray-400">
+                  <span>Subtotal:</span>
+                  <span id="pos-subtotal" class="font-mono">Rs. 0.00</span>
+                </div>
+                <div class="flex justify-between text-amber-400">
+                  <span>Discount:</span>
+                  <span id="pos-discount-display" class="font-mono">- Rs. 0.00</span>
+                </div>
+                <div class="flex justify-between text-base font-extrabold text-gold pt-1.5 border-t border-gold/20">
+                  <span>Grand Total:</span>
+                  <span id="pos-grand-total" class="font-mono">Rs. 0.00</span>
+                </div>
+              </div>
+
+              <button id="complete-sale-btn" onclick="completeSale()" class="w-full py-3.5 rounded-xl gold-gradient text-obsidian font-extrabold text-sm shadow-lg hover:opacity-95 active:scale-[0.99] transition flex items-center justify-center gap-2">
+                <span>✅ Complete Sale &amp; Auto-Download PDF</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 2: STOCK & INVENTORY ==================== -->
+      <section id="tab-inventory" class="tab-panel hidden space-y-5">
+        <!-- Stock Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">Total Item Categories (SKUs)</p>
+            <p id="stat-total-skus" class="text-xl sm:text-2xl font-extrabold text-white mt-1">0</p>
+          </div>
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">Total Stock Quantity</p>
+            <p id="stat-total-qty" class="text-xl sm:text-2xl font-extrabold text-gold mt-1">0</p>
+          </div>
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">Stock Selling Value</p>
+            <p id="stat-selling-val" class="text-lg sm:text-xl font-extrabold text-emerald-400 mt-1 font-mono">Rs. 0</p>
+          </div>
+          <div id="stat-cost-card" class="hidden bg-onyx border border-gold/25 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">Stock Cost Value</p>
+            <p id="stat-cost-val" class="text-lg sm:text-xl font-extrabold text-amber-400 mt-1 font-mono">Rs. 0</p>
+          </div>
+        </div>
+
+        <!-- Admin: Add / Edit Item Form -->
+        <div id="admin-add-item-box" class="hidden bg-onyx border border-gold/35 rounded-2xl p-4 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="item-form-title" class="text-base sm:text-lg font-bold text-gold">➕ Add New Spare Part Item</h2>
+            <button type="button" id="cancel-edit-item-btn" onclick="resetItemForm()" class="hidden text-xs text-gray-400 hover:text-white underline">Cancel Edit</button>
+          </div>
+          <form id="item-form" onsubmit="saveInventoryItem(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <input type="hidden" id="edit-item-id" value="" />
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Item Name *</label>
+              <input type="text" id="item-name" required placeholder="e.g., Brake Pad Front" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Category *</label>
+              <input type="text" id="item-category" required placeholder="e.g., Brake System, Engine" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Brand *</label>
+              <input type="text" id="item-brand" required placeholder="e.g., Bajaj, Honda, Motul" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Bike / 3-Wheel Model *</label>
+              <input type="text" id="item-bike-model" required placeholder="e.g., Pulsar 150, Bajaj RE" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Rack Number *</label>
+              <input type="text" id="item-rack" required placeholder="e.g., R01, R02, R03" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white uppercase focus:border-gold focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Quantity *</label>
+              <input type="number" id="item-qty" required min="0" placeholder="0" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Cost Price (Rs.) *</label>
+              <input type="number" id="item-cost" required min="0" step="0.01" placeholder="0.00" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Selling Price (Rs.) *</label>
+              <input type="number" id="item-price" required min="0" step="0.01" placeholder="0.00" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+            <div class="sm:col-span-2 lg:col-span-4 flex items-center justify-between gap-3 mt-1">
+              <div class="flex items-center gap-2 text-xs text-gray-400">
+                <span>Low Stock Alert Limit:</span>
+                <input type="number" id="item-low-limit" min="1" value="5" class="w-16 px-2 py-1.5 rounded-lg bg-obsidian border border-gold/25 text-white text-center" />
+              </div>
+              <button type="submit" id="save-item-btn" class="px-6 py-2.5 rounded-xl gold-gradient text-obsidian font-bold text-sm shadow-lg hover:opacity-95 transition">
+                Save Item to Inventory
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Search & Filter Bar -->
+        <div class="bg-onyx border border-gold/25 rounded-2xl p-4 flex flex-col sm:flex-row gap-3">
+          <input type="text" id="inv-search" oninput="renderInventoryTable()" placeholder="Search Name, Code, Brand, Category, Bike Model, Rack (R01)..." class="flex-1 px-4 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+          <select id="inv-rack-filter" onchange="renderInventoryTable()" class="px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-gray-200">
+            <option value="">All Racks</option>
+          </select>
+          <label class="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-xs text-amber-400 cursor-pointer">
+            <input type="checkbox" id="inv-low-stock-only" onchange="renderInventoryTable()" class="accent-gold" />
+            <span>Low Stock Only</span>
+          </label>
+        </div>
+
+        <!-- Inventory Table -->
+        <div class="bg-onyx border border-gold/25 rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr class="bg-charcoal text-gold border-b border-gold/25">
+                  <th class="p-3">Code / Rack</th>
+                  <th class="p-3">Item &amp; Vehicle Model</th>
+                  <th class="p-3">Brand / Category</th>
+                  <th class="p-3 text-center">Stock</th>
+                  <th class="p-3 text-right admin-cost-col hidden">Cost Price</th>
+                  <th class="p-3 text-right">Selling Price</th>
+                  <th class="p-3 text-right admin-action-col hidden">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-tbody" class="divide-y divide-gray-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 3: BILLS & CUSTOMERS ==================== -->
+      <section id="tab-history" class="tab-panel hidden space-y-5">
+        <div class="bg-onyx border border-gold/25 rounded-2xl p-4 flex flex-col sm:flex-row gap-3 justify-between items-center">
+          <input type="text" id="bills-search" oninput="renderBillsHistory()" placeholder="Search Bill Number (INV-...), Customer Name, or Phone Number..." class="w-full sm:w-96 px-4 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+          <select id="bills-payment-filter" onchange="renderBillsHistory()" class="w-full sm:w-auto px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-gray-200">
+            <option value="">All Sales (Cash &amp; Credit)</option>
+            <option value="Cash">Cash Sales Only</option>
+            <option value="Credit">Credit Sales Only</option>
+          </select>
+        </div>
+
+        <div class="bg-onyx border border-gold/25 rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr class="bg-charcoal text-gold border-b border-gold/25">
+                  <th class="p-3">Bill No &amp; Date</th>
+                  <th class="p-3">Customer</th>
+                  <th class="p-3">Items</th>
+                  <th class="p-3">Payment</th>
+                  <th class="p-3 text-right">Discount</th>
+                  <th class="p-3 text-right">Net Total</th>
+                  <th class="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="bills-tbody" class="divide-y divide-gray-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 4: RETURNS & REFUNDS ==================== -->
+      <section id="tab-returns" class="tab-panel hidden space-y-5">
+        <div class="bg-onyx border border-gold/30 rounded-2xl p-4 sm:p-6">
+          <h2 class="text-base sm:text-lg font-bold text-gold mb-1">↩️ Sales Return &amp; Restock</h2>
+          <p class="text-xs text-gray-400 mb-4">Search bill number, select returned items, calculate refund, and restock items automatically.</p>
+
+          <div class="flex flex-col sm:flex-row gap-2.5 mb-4">
+            <input type="text" id="return-bill-search" placeholder="Enter Bill Number (e.g., INV-2026-0001)..." class="flex-1 px-4 py-2.5 rounded-xl bg-obsidian border border-gold/30 text-sm text-white focus:border-gold focus:outline-none" />
+            <button onclick="lookupBillForReturn()" class="px-5 py-2.5 rounded-xl gold-gradient text-obsidian font-bold text-sm shadow hover:opacity-95 transition">Find Bill</button>
+          </div>
+
+          <div id="return-bill-workspace" class="hidden bg-obsidian border border-gold/25 rounded-2xl p-4 space-y-4">
+            <div id="return-bill-header" class="flex flex-wrap justify-between gap-2 text-xs border-b border-gold/20 pb-3"></div>
+            <div id="return-items-list" class="space-y-2.5"></div>
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gold/20">
+              <div class="text-sm font-bold text-amber-400">
+                Total Refund Amount: <span id="return-refund-total" class="font-mono text-lg text-gold">Rs. 0.00</span>
+              </div>
+              <button onclick="processReturnSubmission()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl gold-gradient text-obsidian font-extrabold text-sm shadow-lg hover:opacity-95 transition">
+                ✅ Process Return &amp; Restock
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Return History -->
+        <div class="bg-onyx border border-gold/25 rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm font-bold text-gold mb-3">Recent Returns History</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-charcoal text-gold border-b border-gold/20">
+                  <th class="p-2.5">Date</th>
+                  <th class="p-2.5">Original Bill</th>
+                  <th class="p-2.5">Returned Items</th>
+                  <th class="p-2.5 text-right">Refund Paid</th>
+                  <th class="p-2.5">Processed By</th>
+                </tr>
+              </thead>
+              <tbody id="returns-history-tbody" class="divide-y divide-gray-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 5: SUPPLIERS & PURCHASES (ADMIN ONLY) ==================== -->
+      <section id="tab-purchases" class="tab-panel hidden space-y-5">
+        <div class="bg-onyx border border-gold/30 rounded-2xl p-4 sm:p-6">
+          <h2 class="text-base sm:text-lg font-bold text-gold mb-1">🚚 Supplier Purchase Bill</h2>
+          <p class="text-xs text-gray-400 mb-4">Record new stock purchases from suppliers. Stock quantities and cost prices update automatically.</p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Supplier Name *</label>
+              <input type="text" id="pur-supplier-name" placeholder="e.g., Lanka Auto Imports" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Supplier Phone *</label>
+              <input type="tel" id="pur-supplier-phone" placeholder="011 / 07X XXXXXXX" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Supplier Invoice Ref</label>
+              <input type="text" id="pur-invoice-ref" placeholder="SUP-001" class="w-full px-3 py-2.5 rounded-xl bg-obsidian border border-gold/25 text-sm text-white focus:border-gold focus:outline-none" />
+            </div>
+          </div>
+
+          <!-- Add Purchase Line -->
+          <div class="bg-obsidian border border-gold/20 rounded-2xl p-3.5 mb-4 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+            <div class="sm:col-span-5">
+              <label class="block text-[11px] text-gray-400 mb-1">Select Existing Stock Item</label>
+              <select id="pur-item-select" onchange="prefillPurchaseCost()" class="w-full px-3 py-2.5 rounded-xl bg-charcoal border border-gold/25 text-xs text-white focus:border-gold focus:outline-none"></select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] text-gray-400 mb-1">Qty Purchased</label>
+              <input type="number" id="pur-qty" min="1" value="1" class="w-full px-3 py-2.5 rounded-xl bg-charcoal border border-gold/25 text-xs text-white" />
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-[11px] text-gray-400 mb-1">Unit Cost Price (Rs.)</label>
+              <input type="number" id="pur-unit-cost" min="0" step="0.01" placeholder="0.00" class="w-full px-3 py-2.5 rounded-xl bg-charcoal border border-gold/25 text-xs text-white" />
+            </div>
+            <div class="sm:col-span-2">
+              <button type="button" onclick="addPurchaseLine()" class="w-full py-2.5 rounded-xl bg-gold/20 hover:bg-gold/30 border border-gold text-gold font-bold text-xs transition">+ Add Line</button>
+            </div>
+          </div>
+
+          <div id="pur-lines-list" class="space-y-2 mb-4"></div>
+
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gold/20">
+            <div class="text-sm font-bold text-gray-300">
+              Total Purchase Bill Cost: <span id="pur-total-cost" class="font-mono text-lg text-gold">Rs. 0.00</span>
+            </div>
+            <button onclick="savePurchaseBill()" class="w-full sm:w-auto px-6 py-3 rounded-xl gold-gradient text-obsidian font-extrabold text-sm shadow-lg hover:opacity-95 transition">
+              ✅ Save Purchase Bill &amp; Update Stock
+            </button>
+          </div>
+        </div>
+
+        <!-- Purchase History -->
+        <div class="bg-onyx border border-gold/25 rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm font-bold text-gold mb-3">Purchase History</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-charcoal text-gold border-b border-gold/20">
+                  <th class="p-2.5">Date &amp; Ref</th>
+                  <th class="p-2.5">Supplier</th>
+                  <th class="p-2.5">Purchased Items</th>
+                  <th class="p-2.5 text-right">Total Cost</th>
+                </tr>
+              </thead>
+              <tbody id="purchase-history-tbody" class="divide-y divide-gray-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 6: PROFIT REPORTS & AUDIT LOG (ADMIN ONLY) ==================== -->
+      <section id="tab-reports" class="tab-panel hidden space-y-5">
+        <!-- Period Filter -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-onyx border border-gold/25 rounded-2xl p-4">
+          <div>
+            <h2 class="text-base font-bold text-gold">📊 Net Profit &amp; Sales Analytics (Admin Only)</h2>
+            <p class="text-xs text-gray-400">Selling Price - Cost Price - Discounts - Return Profit Adjustments</p>
+          </div>
+          <div class="flex gap-1.5 bg-obsidian p-1 rounded-xl border border-gold/20">
+            <button onclick="setReportPeriod('daily')" data-period="daily" class="report-period-btn px-3 py-1.5 rounded-lg text-xs font-bold gold-gradient text-obsidian">Daily</button>
+            <button onclick="setReportPeriod('weekly')" data-period="weekly" class="report-period-btn px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400">Weekly</button>
+            <button onclick="setReportPeriod('monthly')" data-period="monthly" class="report-period-btn px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400">Monthly</button>
+            <button onclick="setReportPeriod('all')" data-period="all" class="report-period-btn px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400">All Time</button>
+          </div>
+        </div>
+
+        <!-- KPI Metrics Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div class="bg-onyx border border-gold/30 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">Net Sales Revenue</p>
+            <p id="rep-total-sales" class="text-xl font-black text-white font-mono mt-1">Rs. 0.00</p>
+          </div>
+          <div class="bg-onyx border border-emerald-500/30 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">True Net Profit</p>
+            <p id="rep-net-profit" class="text-xl font-black text-emerald-400 font-mono mt-1">Rs. 0.00</p>
+          </div>
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">Cash vs Credit Sales</p>
+            <p class="text-xs sm:text-sm font-bold text-gold font-mono mt-1.5">
+              💵 <span id="rep-cash-sales">Rs. 0</span> | 📝 <span id="rep-credit-sales" class="text-amber-400">Rs. 0</span>
+            </p>
+          </div>
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">Total Discounts Given</p>
+            <p id="rep-total-discounts" class="text-lg font-extrabold text-amber-400 font-mono mt-1">Rs. 0.00</p>
+          </div>
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">Total Refunds</p>
+            <p id="rep-total-returns" class="text-lg font-extrabold text-red-400 font-mono mt-1">Rs. 0.00</p>
+          </div>
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <p class="text-xs text-gray-400">Current Stock Cost Value</p>
+            <p id="rep-stock-cost-val" class="text-lg font-extrabold text-gold font-mono mt-1">Rs. 0.00</p>
+          </div>
+        </div>
+
+        <!-- Product Performance: Top Selling, Slow Moving, Highest Profit -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-gold mb-3">🔥 Top-Selling Items</h3>
+            <div id="rep-top-selling" class="space-y-2 text-xs"></div>
+          </div>
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-3">💰 Highest-Profit Items</h3>
+            <div id="rep-top-profit" class="space-y-2 text-xs"></div>
+          </div>
+          <div class="bg-onyx border border-gold/25 rounded-2xl p-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3">🐢 Slow-Moving Items</h3>
+            <div id="rep-slow-moving" class="space-y-2 text-xs"></div>
+          </div>
+        </div>
+
+        <!-- Complete Stock Movement & User Audit Log -->
+        <div class="bg-onyx border border-gold/25 rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm font-bold text-gold mb-3">🛡️ Complete Audit Trail &amp; Stock Movement Log</h3>
+          <div class="overflow-x-auto max-h-80 overflow-y-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-charcoal text-gold border-b border-gold/20 sticky top-0">
+                  <th class="p-2.5">Date &amp; Time</th>
+                  <th class="p-2.5">User</th>
+                  <th class="p-2.5">Action Type</th>
+                  <th class="p-2.5">Item / Reference</th>
+                  <th class="p-2.5 text-right">Qty Change</th>
+                </tr>
+              </thead>
+              <tbody id="audit-log-tbody" class="divide-y divide-gray-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 7: ADMIN SETTINGS, LOGO, PIN & BACKUP ==================== -->
+      <section id="tab-settings" class="tab-panel hidden space-y-5">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <!-- Custom Logo Uploader & Brand Preview -->
+          <div class="bg-onyx border border-gold/30 rounded-2xl p-5 space-y-4">
+            <h2 class="text-base font-bold text-gold">🖼️ S3 MOTORS Brand Logo Settings</h2>
+            <p class="text-xs text-gray-400">Your professional S3 MOTORS emblem is active across Login, Header, Bills, and PDF Receipts. You can also upload a custom image file anytime.</p>
+            <div class="flex items-center gap-4">
+              <div class="w-24 h-24 rounded-full bg-black border-2 border-gold/60 overflow-hidden shrink-0 shadow" data-s3-logo-slot="settings"></div>
+              <div class="space-y-2">
+                <label class="inline-block px-4 py-2 rounded-xl gold-gradient text-obsidian font-bold text-xs cursor-pointer shadow hover:opacity-95 transition">
+                  <span>Upload Logo Image</span>
+                  <input type="file" accept="image/*" onchange="handleLogoUpload(event)" class="hidden" />
+                </label>
+                <button type="button" onclick="resetDefaultEmblem()" class="block text-xs text-gray-400 hover:text-gold underline">Restore Default S3 Motors Emblem</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Change Admin & Staff Security PINs (SHA-256 Hashed) -->
+          <div class="bg-onyx border border-gold/30 rounded-2xl p-5 space-y-4">
+            <h2 class="text-base font-bold text-gold">🔐 Change Security PINs (SHA-256 Encrypted)</h2>
+            <p class="text-xs text-gray-400">PINs are cryptographically hashed (SHA-256) before saving. Plain-text PINs are never stored.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="bg-obsidian p-3 rounded-xl border border-gold/20 space-y-2">
+                <label class="block text-xs font-bold text-gold">New Admin PIN (4 Digits)</label>
+                <input type="password" id="new-admin-pin" maxlength="6" inputmode="numeric" placeholder="••••" class="w-full px-3 py-2 rounded-lg bg-charcoal border border-gold/25 text-sm text-white" />
+                <button onclick="updateUserPin('admin')" class="w-full py-2 rounded-lg gold-gradient text-obsidian font-bold text-xs">Update Admin PIN</button>
+              </div>
+              <div class="bg-obsidian p-3 rounded-xl border border-gold/20 space-y-2">
+                <label class="block text-xs font-bold text-gray-300">New Staff PIN (4 Digits)</label>
+                <input type="password" id="new-staff-pin" maxlength="6" inputmode="numeric" placeholder="••••" class="w-full px-3 py-2 rounded-lg bg-charcoal border border-gold/25 text-sm text-white" />
+                <button onclick="updateUserPin('staff')" class="w-full py-2 rounded-lg bg-charcoal hover:bg-graphite border border-gold/30 text-gold font-bold text-xs">Update Staff PIN</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Firebase Cloud Sync Configuration -->
+          <div class="bg-onyx border border-gold/30 rounded-2xl p-5 space-y-3">
+            <h2 class="text-base font-bold text-gold">☁️ Firebase Cloud Realtime Sync</h2>
+            <p class="text-xs text-gray-400">Paste your Firebase Web App Config JSON to sync Stock, Sales &amp; Transactions live across phones and computers.</p>
+            <textarea id="firebase-config-input" rows="4" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","databaseURL":"..."}' class="w-full p-3 rounded-xl bg-obsidian border border-gold/25 text-xs font-mono text-gray-200 focus:border-gold focus:outline-none"></textarea>
+            <div class="flex gap-2">
+              <button onclick="saveFirebaseConfig()" class="px-4 py-2 rounded-xl gold-gradient text-obsidian font-bold text-xs">Connect Firebase Cloud</button>
+              <button onclick="clearFirebaseConfig()" class="px-4 py-2 rounded-xl bg-charcoal text-gray-300 font-bold text-xs">Use Local/Multi-Tab Sync</button>
+            </div>
+          </div>
+
+          <!-- Daily Auto-Backup & Restore -->
+          <div class="bg-onyx border border-gold/30 rounded-2xl p-5 space-y-3">
+            <h2 class="text-base font-bold text-gold">💾 Daily Backup &amp; System Restore</h2>
+            <p class="text-xs text-gray-400">Automatic daily snapshot runs every 24 hours. You can also trigger an instant backup or restore from a JSON file.</p>
+            <div class="text-xs text-emerald-400 bg-obsidian px-3 py-2 rounded-xl border border-emerald-500/20">
+              Last Auto-Backup: <span id="last-backup-time" class="font-mono">Checking...</span>
+            </div>
+            <div class="flex flex-wrap gap-2 pt-1">
+              <button onclick="exportBackupJSON()" class="px-4 py-2.5 rounded-xl gold-gradient text-obsidian font-bold text-xs">⬇️ Download Backup JSON</button>
+              <button onclick="triggerDailyBackup(true)" class="px-4 py-2.5 rounded-xl bg-charcoal border border-gold/30 text-gold font-bold text-xs">📸 Create Snapshot Now</button>
+              <label class="px-4 py-2.5 rounded-xl bg-charcoal border border-amber-500/30 text-amber-400 font-bold text-xs cursor-pointer">
+                <span>⬆️ Restore JSON</span>
+                <input type="file" accept=".json" onchange="importBackupJSON(event)" class="hidden" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ==================== EXACT S3 MOTORS EMBLEM SVG ====================
+    const S3_EMBLEM_SVG = `
+      <svg viewBox="0 0 240 240" class="w-full h-full object-contain filter drop-shadow-md" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="s3Bg" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#181818"/>
+            <stop offset="70%" stop-color="#0A0A0A"/>
+            <stop offset="100%" stop-color="#000000"/>
+          </radialGradient>
+          <linearGradient id="s3Gold" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFF5B8"/>
+            <stop offset="35%" stop-color="#F5D061"/>
+            <stop offset="70%" stop-color="#D4AF37"/>
+            <stop offset="100%" stop-color="#7A5210"/>
+          </linearGradient>
+          <linearGradient id="s3Silver" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#FFFFFF"/>
+            <stop offset="50%" stop-color="#E0E0E0"/>
+            <stop offset="100%" stop-color="#9A9A9A"/>
+          </linearGradient>
+          <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+          </filter>
+        </defs>
+
+        <!-- Outer Gold Ring -->
+        <circle cx="120" cy="120" r="117" fill="#050505" stroke="url(#s3Gold)" stroke-width="5.5" filter="url(#goldGlow)"/>
+        <circle cx="120" cy="120" r="110" fill="url(#s3Bg)" stroke="url(#s3Gold)" stroke-width="2"/>
+        
+        <!-- Gear Ring -->
+        <circle cx="120" cy="120" r="98" fill="none" stroke="url(#s3Gold)" stroke-width="6" stroke-dasharray="10 5" opacity="0.9"/>
+        <circle cx="120" cy="120" r="90" fill="none" stroke="url(#s3Gold)" stroke-width="1.5" opacity="0.5"/>
+
+        <!-- Top Tools & Spark Plug -->
+        <g transform="translate(120, 48)">
+          <g transform="rotate(-36)">
+            <rect x="-2.5" y="-22" width="5" height="44" rx="1.5" fill="url(#s3Gold)"/>
+            <circle cx="0" cy="-23" r="6.5" fill="url(#s3Gold)"/>
+            <rect x="-2" y="-28" width="4" height="8" fill="#0A0A0A"/>
+            <circle cx="0" cy="23" r="6" fill="url(#s3Gold)"/>
+          </g>
+          <g transform="rotate(36)">
+            <rect x="-2.5" y="-22" width="5" height="44" rx="1.5" fill="url(#s3Gold)"/>
+            <circle cx="0" cy="-23" r="6.5" fill="url(#s3Gold)"/>
+            <rect x="-2" y="-28" width="4" height="8" fill="#0A0A0A"/>
+            <circle cx="0" cy="23" r="6" fill="url(#s3Gold)"/>
+          </g>
+          <g transform="translate(0, -3)">
+            <rect x="-3" y="-10" width="6" height="8" rx="1" fill="#FFFBE8"/>
+            <rect x="-5" y="-2" width="10" height="8" rx="1.5" fill="url(#s3Gold)"/>
+            <line x1="0" y1="6" x2="0" y2="14" stroke="#FFFBE8" stroke-width="2"/>
+          </g>
+        </g>
+
+        <!-- Sportbike (Left) -->
+        <g transform="translate(22, 60) scale(0.92)">
+          <circle cx="16" cy="38" r="10.5" fill="#0A0A0A" stroke="url(#s3Gold)" stroke-width="3.5"/>
+          <circle cx="16" cy="38" r="4" fill="url(#s3Gold)"/>
+          <circle cx="65" cy="38" r="10.5" fill="#0A0A0A" stroke="url(#s3Gold)" stroke-width="3.5"/>
+          <circle cx="65" cy="38" r="4" fill="url(#s3Gold)"/>
+          <path d="M10 25 L28 22 L40 12 L58 12 L68 24 L56 34 L28 34 Z" fill="url(#s3Gold)"/>
+        </g>
+
+        <!-- Tuk-Tuk (Right) -->
+        <g transform="translate(142, 54) scale(0.92)">
+          <circle cx="53" cy="44" r="10" fill="#0A0A0A" stroke="url(#s3Gold)" stroke-width="3.5"/>
+          <circle cx="53" cy="44" r="3.5" fill="url(#s3Gold)"/>
+          <circle cx="15" cy="42" r="8" fill="#0A0A0A" stroke="url(#s3Gold)" stroke-width="3"/>
+          <path d="M8 38 L8 14 Q8 5 22 5 L48 5 Q58 5 60 18 L62 38 L44 38 L44 24 L28 24 L28 38 Z" fill="url(#s3Gold)"/>
+          <rect x="44" y="9" width="13" height="12" rx="2" fill="#0A0A0A" stroke="#FFF" stroke-width="1.2"/>
+        </g>
+
+        <!-- S3 Typography -->
+        <text x="120" y="112" text-anchor="middle" fill="url(#s3Gold)" stroke="#000000" stroke-width="3" paint-order="stroke" font-family="Inter, sans-serif" font-weight="900" font-size="40" letter-spacing="2">S3</text>
+        
+        <!-- MOTORS Plate (Silver & Gold) -->
+        <rect x="22" y="120" width="196" height="38" rx="7" fill="#080808" stroke="url(#s3Gold)" stroke-width="3.2"/>
+        <text x="120" y="147" text-anchor="middle" fill="url(#s3Silver)" stroke="#000000" stroke-width="2" paint-order="stroke" font-family="Inter, sans-serif" font-weight="900" font-size="30" letter-spacing="2.5">MOTORS</text>
+
+        <!-- Ribbon Banner -->
+        <path d="M22 160 L218 160 L212 180 L28 180 Z" fill="url(#s3Gold)"/>
+        <text x="120" y="173.5" text-anchor="middle" fill="#050505" font-family="Inter, sans-serif" font-weight="900" font-size="10" letter-spacing="1">★ BIKE &amp; THREE WHEEL PARTS ★</text>
+
+        <!-- Piston & Alloy Wheel (Bottom) -->
+        <g transform="translate(120, 203)">
+          <g transform="translate(-26, -2) rotate(-20)">
+            <rect x="-11" y="-11" width="22" height="15" rx="2" fill="url(#s3Gold)"/>
+            <rect x="-2.5" y="4" width="5" height="14" fill="url(#s3Gold)"/>
+            <circle cx="0" cy="19" r="4.5" fill="url(#s3Gold)"/>
+          </g>
+          <g transform="translate(22, -2)">
+            <circle cx="0" cy="0" r="17" fill="#0A0A0A" stroke="url(#s3Gold)" stroke-width="4"/>
+            <circle cx="0" cy="0" r="5" fill="url(#s3Gold)"/>
+            <line x1="-15" y1="0" x2="15" y2="0" stroke="url(#s3Gold)" stroke-width="1.8"/>
+            <line x1="0" y1="-15" x2="0" y2="15" stroke="url(#s3Gold)" stroke-width="1.8"/>
+          </g>
+        </g>
+      </svg>
+    `;
+
+    let customLogoDataUrl = localStorage.getItem('s3_custom_logo_dataurl') || '';
+    let generatedEmblemPngDataUrl = '';
+
+    function buildHighResEmblemPng() {
+      return new Promise((resolve) => {
+        if (customLogoDataUrl) {
+          resolve(customLogoDataUrl);
+          return;
+        }
+        if (generatedEmblemPngDataUrl) {
+          resolve(generatedEmblemPngDataUrl);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = 500;
+        canvas.height = 500;
+        const ctx = canvas.getContext('2d');
+
+        ctx.beginPath();
+        ctx.arc(250, 250, 242, 0, 2 * Math.PI);
+        ctx.fillStyle = '#050505';
+        ctx.fill();
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = '#D4AF37';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(250, 250, 226, 0, 2 * Math.PI);
+        ctx.fillStyle = '#101010';
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#D4AF37';
+        ctx.stroke();
+
+        ctx.fillStyle = '#F5D061';
+        ctx.font = '900 68px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('S3', 250, 215);
+
+        ctx.fillStyle = '#060606';
+        ctx.fillRect(45, 238, 410, 80);
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#D4AF37';
+        ctx.strokeRect(45, 238, 410, 80);
+
+        ctx.fillStyle = '#E0E0E0';
+        ctx.font = '900 60px Inter, sans-serif';
+        ctx.fillText('MOTORS', 250, 300);
+
+        ctx.fillStyle = '#D4AF37';
+        ctx.fillRect(60, 340, 380, 46);
+        ctx.fillStyle = '#0A0A0A';
+        ctx.font = '900 20px Inter, sans-serif';
+        ctx.fillText('★ BIKE & THREE WHEEL PARTS ★', 250, 370);
+
+        generatedEmblemPngDataUrl = canvas.toDataURL('image/png');
+        resolve(generatedEmblemPngDataUrl);
+      });
+    }
+
+    function renderAllLogoSlots() {
+      const slots = document.querySelectorAll('[data-s3-logo-slot]');
+      slots.forEach(slot => {
+        if (customLogoDataUrl) {
+          slot.innerHTML = `<img src="${customLogoDataUrl}" alt="S3 MOTORS Logo" class="w-full h-full object-cover rounded-full" />`;
+        } else {
+          slot.innerHTML = S3_EMBLEM_SVG;
+        }
+      });
+    }
+
+    function handleLogoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        customLogoDataUrl = e.target.result;
+        localStorage.setItem('s3_custom_logo_dataurl', customLogoDataUrl);
+        syncStateToCloud();
+        renderAllLogoSlots();
+        showToast('S3 MOTORS Logo updated successfully!', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetDefaultEmblem() {
+      customLogoDataUrl = '';
+      localStorage.removeItem('s3_custom_logo_dataurl');
+      syncStateToCloud();
+      renderAllLogoSlots();
+      showToast('Restored default S3 MOTORS emblem.', 'info');
+    }
+
+    // ==================== SHA-256 CRYPTO HASHING FOR PIN SECURITY ====================
+    async function hashPinSHA256(pinText) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode('S3_MOTORS_SALT_' + String(pinText).trim());
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // ==================== APPLICATION STATE & PERSISTENCE ====================
+    const STORAGE_KEY = 's3_motors_pos_v2';
+    let currentUserRole = null;
+    let selectedLoginRole = 'admin';
+    let enteredPin = '';
+    let cart = [];
+    let purchaseDraftLines = [];
+    let currentReportPeriod = 'daily';
+    let activeReturnBill = null;
+    let isProcessingSale = false;
+    let firestoreDb = null;
+    let unsubscribeFirestore = null;
+
+    let appState = {
+      adminPinHash: '',
+      staffPinHash: '',
+      nextItemSeq: 1004,
+      nextBillSeq: 1,
+      inventory: [],
+      bills: [],
+      returns: [],
+      purchases: [],
+      auditLogs: [],
+      lastBackupAt: null,
+      dailySnapshots: []
+    };
+
+    async function initDefaultState() {
+      const defaultAdminHash = await hashPinSHA256('1234');
+      const defaultStaffHash = await hashPinSHA256('0000');
+      const savedRaw = localStorage.getItem(STORAGE_KEY);
+
+      if (savedRaw) {
+        try {
+          const parsed = JSON.parse(savedRaw);
+          appState = { ...appState, ...parsed };
+          if (!appState.adminPinHash) appState.adminPinHash = defaultAdminHash;
+          if (!appState.staffPinHash) appState.staffPinHash = defaultStaffHash;
+        } catch (e) {
+          console.error('State parse error', e);
+        }
+      } else {
+        const now = new Date().toISOString();
+        appState.adminPinHash = defaultAdminHash;
+        appState.staffPinHash = defaultStaffHash;
+        appState.inventory = [
+          {
+            id: 'item_1',
+            code: 'S3M-1001',
+            name: 'Front Disc Brake Pad Set',
+            category: 'Brake System',
+            brand: 'Bajaj Genuine',
+            bikeModel: 'Pulsar 150 / 180 / NS200',
+            rack: 'R01',
+            qty: 24,
+            costPrice: 850,
+            sellingPrice: 1350,
+            lowStockLimit: 5,
+            addedDate: now
+          },
+          {
+            id: 'item_2',
+            code: 'S3M-1002',
+            name: 'Three-Wheel Clutch Cable Assembly',
+            category: 'Cables & Controls',
+            brand: 'Bajaj RE',
+            bikeModel: 'Bajaj 4-Stroke Three Wheeler',
+            rack: 'R02',
+            qty: 18,
+            costPrice: 420,
+            sellingPrice: 750,
+            lowStockLimit: 5,
+            addedDate: now
+          },
+          {
+            id: 'item_3',
+            code: 'S3M-1003',
+            name: 'Motul 3000 4T 20W-50 Engine Oil (1L)',
+            category: 'Lubricants & Oils',
+            brand: 'Motul',
+            bikeModel: 'Universal Bike & 3-Wheel',
+            rack: 'R03',
+            qty: 4,
+            costPrice: 1850,
+            sellingPrice: 2450,
+            lowStockLimit: 6,
+            addedDate: now
+          }
+        ];
+        appState.auditLogs.unshift({
+          id: 'log_init',
+          timestamp: now,
+          user: 'SYSTEM',
+          action: 'INITIALIZED',
+          detail: 'S3 MOTORS POS Cloud Database Initialized',
+          qtyChange: '+46'
+        });
+        saveLocalState();
+      }
+      checkDailyAutoBackup();
+    }
+
+    function saveLocalState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      syncStateToCloud();
+    }
+
+    // ==================== FIREBASE CLOUD & REALTIME SYNC ====================
+    function initFirebaseFromSavedConfig() {
+      const cfgRaw = localStorage.getItem('s3_firebase_config');
+      if (cfgRaw) {
+        document.getElementById('firebase-config-input').value = cfgRaw;
+        try {
+          const cfg = JSON.parse(cfgRaw);
+          if (!firebase.apps.length) {
+            firebase.initializeApp(cfg);
+          }
+          firestoreDb = firebase.firestore();
+          startFirestoreRealtimeListener();
+          updateCloudStatusUI(true, 'Firebase Cloud Connected (Live)');
+        } catch (err) {
+          console.error('Firebase init failed:', err);
+          updateCloudStatusUI(false, 'Local + Multi-Tab Live Sync');
+        }
+      } else {
+        updateCloudStatusUI(true, 'Real-Time Sync Active');
+      }
+    }
+
+    function startFirestoreRealtimeListener() {
+      if (!firestoreDb) return;
+      if (unsubscribeFirestore) unsubscribeFirestore();
+      unsubscribeFirestore = firestoreDb.collection('s3_motors_pos').doc('main_store')
+        .onSnapshot((doc) => {
+          if (doc.exists) {
+            const remoteData = doc.data();
+            if (remoteData && remoteData.payload) {
+              appState = { ...appState, ...JSON.parse(remoteData.payload) };
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+              if (currentUserRole) refreshAllViews();
+            }
+          } else {
+            syncStateToCloud();
+          }
+        });
+    }
+
+    async function syncStateToCloud() {
+      if (!firestoreDb) return;
+      try {
+        await firestoreDb.collection('s3_motors_pos').doc('main_store').set({
+          payload: JSON.stringify(appState),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch (e) {
+        console.warn('Cloud sync deferred:', e);
+      }
+    }
+
+    function saveFirebaseConfig() {
+      const raw = document.getElementById('firebase-config-input').value.trim();
+      if (!raw) {
+        showToast('Please paste valid Firebase JSON config.', 'error');
+        return;
+      }
+      try {
+        JSON.parse(raw);
+        localStorage.setItem('s3_firebase_config', raw);
+        initFirebaseFromSavedConfig();
+        showToast('Firebase Cloud connected! Real-time sync is active.', 'success');
+      } catch (e) {
+        showToast('Invalid JSON format in Firebase config.', 'error');
+      }
+    }
+
+    function clearFirebaseConfig() {
+      localStorage.removeItem('s3_firebase_config');
+      firestoreDb = null;
+      if (unsubscribeFirestore) unsubscribeFirestore();
+      document.getElementById('firebase-config-input').value = '';
+      updateCloudStatusUI(true, 'Local + Multi-Tab Live Sync');
+      showToast('Switched to built-in multi-tab live sync.', 'info');
+    }
+
+    function updateCloudStatusUI(ok, text) {
+      const statusText = document.getElementById('cloud-status-text');
+      const syncInd = document.getElementById('sync-indicator');
+      if (statusText) statusText.textContent = text;
+      if (syncInd) {
+        syncInd.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse"></span> ${text}`;
+      }
+    }
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        appState = JSON.parse(e.newValue);
+        if (currentUserRole) refreshAllViews();
+      }
+    });
+
+    // ==================== LOGIN & ROLE ACCESS ====================
+    function selectLoginRole(role) {
+      selectedLoginRole = role;
+      enteredPin = '';
+      updatePinDots();
+      document.getElementById('login-error').textContent = '';
+
+      const adminBtn = document.getElementById('role-btn-admin');
+      const staffBtn = document.getElementById('role-btn-staff');
+      if (role === 'admin') {
+        adminBtn.className = 'py-2.5 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 gold-gradient text-obsidian shadow';
+        staffBtn.className = 'py-2.5 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-gold';
+      } else {
+        staffBtn.className = 'py-2.5 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 gold-gradient text-obsidian shadow';
+        adminBtn.className = 'py-2.5 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 text-gray-400 hover:text-gold';
+      }
+    }
+
+    function appendPin(digit) {
+      if (enteredPin.length >= 6) return;
+      enteredPin += digit;
+      updatePinDots();
+      if (enteredPin.length === 4) {
+        verifyLogin();
+      }
+    }
+
+    function backspacePin() {
+      enteredPin = enteredPin.slice(0, -1);
+      updatePinDots();
+    }
+
+    function clearPin() {
+      enteredPin = '';
+      document.getElementById('login-error').textContent = '';
+      updatePinDots();
+    }
+
+    function updatePinDots() {
+      const dots = document.querySelectorAll('#pin-dots span');
+      dots.forEach((dot, idx) => {
+        if (idx < enteredPin.length) {
+          dot.className = 'w-4 h-4 rounded-full bg-gold border-2 border-gold shadow-md scale-110 transition-all';
+        } else {
+          dot.className = 'w-4 h-4 rounded-full border-2 border-gold/50 transition-all';
+        }
+      });
+    }
+
+    async function verifyLogin() {
+      if (!enteredPin) {
+        document.getElementById('login-error').textContent = 'Please enter security PIN';
+        return;
+      }
+      const hashedInput = await hashPinSHA256(enteredPin);
+      const targetHash = selectedLoginRole === 'admin' ? appState.adminPinHash : appState.staffPinHash;
+
+      if (hashedInput === targetHash) {
+        currentUserRole = selectedLoginRole;
+        enteredPin = '';
+        updatePinDots();
+        applyRolePermissions();
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-shell').classList.remove('hidden');
+        switchTab('pos');
+        refreshAllViews();
+        showToast(`Welcome to S3 MOTORS POS (${currentUserRole.toUpperCase()})`, 'success');
+      } else {
+        document.getElementById('login-error').textContent = 'Incorrect PIN! Please try again.';
+        enteredPin = '';
+        updatePinDots();
+      }
+    }
+
+    function logoutUser() {
+      currentUserRole = null;
+      cart = [];
+      document.getElementById('app-shell').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+      showToast('Logged out safely. All cloud data remains protected.', 'info');
+    }
+
+    function applyRolePermissions() {
+      const isAdmin = currentUserRole === 'admin';
+      const badge = document.getElementById('active-role-badge');
+      badge.textContent = isAdmin ? 'ADMIN' : 'STAFF';
+      badge.className = isAdmin
+        ? 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gold/20 text-gold border border-gold/40'
+        : 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/40';
+
+      document.getElementById('header-settings-btn').classList.toggle('hidden', !isAdmin);
+      document.querySelectorAll('.admin-only-nav').forEach(el => el.classList.toggle('hidden', !isAdmin));
+      document.getElementById('admin-add-item-box').classList.toggle('hidden', !isAdmin);
+      document.getElementById('stat-cost-card').classList.toggle('hidden', !isAdmin);
+      document.querySelectorAll('.admin-cost-col').forEach(el => el.classList.toggle('hidden', !isAdmin));
+      document.querySelectorAll('.admin-action-col').forEach(el => el.classList.toggle('hidden', !isAdmin));
+    }
+
+    async function updateUserPin(role) {
+      if (currentUserRole !== 'admin') return;
+      const inputEl = document.getElementById(role === 'admin' ? 'new-admin-pin' : 'new-staff-pin');
+      const newPin = inputEl.value.trim();
+      if (!/^\d{4,6}$/.test(newPin)) {
+        showToast('PIN must be 4 to 6 digits.', 'error');
+        return;
+      }
+      const hashed = await hashPinSHA256(newPin);
+      if (role === 'admin') appState.adminPinHash = hashed;
+      else appState.staffPinHash = hashed;
+
+      logAudit('PIN_CHANGED', `${role.toUpperCase()} security PIN updated`, '0');
+      saveLocalState();
+      inputEl.value = '';
+      showToast(`${role.toUpperCase()} PIN securely updated (SHA-256)!`, 'success');
+    }
+
+    // ==================== NAVIGATION ====================
+    function switchTab(tabName) {
+      const adminOnlyTabs = ['purchases', 'reports', 'settings'];
+      if (adminOnlyTabs.includes(tabName) && currentUserRole !== 'admin') {
+        showToast('Access Denied: Admin privileges required.', 'error');
+        return;
+      }
+
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      const targetPanel = document.getElementById(`tab-${tabName}`);
+      if (targetPanel) targetPanel.classList.remove('hidden');
+
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.className = 'nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5 gold-gradient text-obsidian shadow';
+        } else {
+          btn.className = 'nav-tab px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5 bg-charcoal/70 text-gray-300 hover:text-gold';
+        }
+      });
+
+      refreshAllViews();
+    }
+
+    function refreshAllViews() {
+      populateRackFilters();
+      renderPosCatalog();
+      renderCart();
+      renderInventoryTable();
+      renderBillsHistory();
+      renderReturnsHistory();
+      if (currentUserRole === 'admin') {
+        populatePurchaseItemDropdown();
+        renderPurchaseHistory();
+        renderProfitReports();
+        renderAuditLogs();
+        updateBackupTimestampUI();
+      }
+      updateNextBillPreview();
+      populateCustomerDatalist();
+    }
+
+    // ==================== INVENTORY MANAGEMENT ====================
+    function populateRackFilters() {
+      const racks = [...new Set(appState.inventory.map(i => i.rack).filter(Boolean))].sort();
+      ['pos-rack-filter', 'inv-rack-filter'].forEach(selectId => {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        const current = sel.value;
+        sel.innerHTML = `<option value="">All Racks</option>` +
+          racks.map(r => `<option value="${r}">${r}</option>`).join('');
+        sel.value = current;
+      });
+    }
+
+    function saveInventoryItem(event) {
+      event.preventDefault();
+      if (currentUserRole !== 'admin') {
+        showToast('Only Admin can add or edit items.', 'error');
+        return;
+      }
+
+      const editId = document.getElementById('edit-item-id').value;
+      const name = document.getElementById('item-name').value.trim();
+      const category = document.getElementById('item-category').value.trim();
+      const brand = document.getElementById('item-brand').value.trim();
+      const bikeModel = document.getElementById('item-bike-model').value.trim();
+      const rack = document.getElementById('item-rack').value.trim().toUpperCase();
+      const qty = parseInt(document.getElementById('item-qty').value, 10) || 0;
+      const costPrice = parseFloat(document.getElementById('item-cost').value) || 0;
+      const sellingPrice = parseFloat(document.getElementById('item-price').value) || 0;
+      const lowStockLimit = parseInt(document.getElementById('item-low-limit').value, 10) || 5;
+
+      if (!editId) {
+        const duplicate = appState.inventory.find(i =>
+          i.name.toLowerCase() === name.toLowerCase() &&
+          i.brand.toLowerCase() === brand.toLowerCase() &&
+          i.bikeModel.toLowerCase() === bikeModel.toLowerCase()
+        );
+        if (duplicate) {
+          showConfirm(
+            'Duplicate Item Detected',
+            `"${duplicate.name}" (${duplicate.brand} - ${duplicate.bikeModel}) already exists under Code ${duplicate.code} (Stock: ${duplicate.qty}). Do you still want to add it as a separate item?`,
+            () => commitSaveInventoryItem(null, { name, category, brand, bikeModel, rack, qty, costPrice, sellingPrice, lowStockLimit })
+          );
+          return;
+        }
+      }
+
+      commitSaveInventoryItem(editId, { name, category, brand, bikeModel, rack, qty, costPrice, sellingPrice, lowStockLimit });
+    }
+
+    function commitSaveInventoryItem(editId, data) {
+      const now = new Date().toISOString();
+      if (editId) {
+        const idx = appState.inventory.findIndex(i => i.id === editId);
+        if (idx !== -1) {
+          const oldQty = appState.inventory[idx].qty;
+          const diff = data.qty - oldQty;
+          appState.inventory[idx] = { ...appState.inventory[idx], ...data };
+          logAudit('ITEM_UPDATED', `${appState.inventory[idx].code} - ${data.name}`, diff >= 0 ? `+${diff}` : `${diff}`);
+          showToast(`Item successfully updated! (${appState.inventory[idx].code})`, 'success');
+        }
+      } else {
+        const code = `S3M-${appState.nextItemSeq++}`;
+        const newItem = {
+          id: 'item_' + Date.now(),
+          code,
+          ...data,
+          addedDate: now
+        };
+        appState.inventory.unshift(newItem);
+        logAudit('ITEM_ADDED', `${code} - ${data.name} (${data.bikeModel})`, `+${data.qty}`);
+        showToast(`New item successfully added! (${code})`, 'success');
+      }
+
+      resetItemForm();
+      saveLocalState();
+      refreshAllViews();
+    }
+
+    function editInventoryItem(id) {
+      if (currentUserRole !== 'admin') return;
+      const item = appState.inventory.find(i => i.id === id);
+      if (!item) return;
+
+      document.getElementById('edit-item-id').value = item.id;
+      document.getElementById('item-name').value = item.name;
+      document.getElementById('item-category').value = item.category;
+      document.getElementById('item-brand').value = item.brand;
+      document.getElementById('item-bike-model').value = item.bikeModel;
+      document.getElementById('item-rack').value = item.rack;
+      document.getElementById('item-qty').value = item.qty;
+      document.getElementById('item-cost').value = item.costPrice;
+      document.getElementById('item-price').value = item.sellingPrice;
+      document.getElementById('item-low-limit').value = item.lowStockLimit || 5;
+
+      document.getElementById('item-form-title').textContent = `✏️ Edit Item (${item.code})`;
+      document.getElementById('save-item-btn').textContent = 'Update Item';
+      document.getElementById('cancel-edit-item-btn').classList.remove('hidden');
+      document.getElementById('admin-add-item-box').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function resetItemForm() {
+      document.getElementById('item-form').reset();
+      document.getElementById('edit-item-id').value = '';
+      document.getElementById('item-low-limit').value = 5;
+      document.getElementById('item-form-title').textContent = '➕ Add New Spare Part Item';
+      document.getElementById('save-item-btn').textContent = 'Save Item to Inventory';
+      document.getElementById('cancel-edit-item-btn').classList.add('hidden');
+    }
+
+    function deleteInventoryItem(id) {
+      if (currentUserRole !== 'admin') {
+        showToast('Delete actions are restricted to Admin only.', 'error');
+        return;
+      }
+      const item = appState.inventory.find(i => i.id === id);
+      if (!item) return;
+      showConfirm(
+        'Delete Stock Item',
+        `Are you sure you want to permanently delete "${item.name}" (${item.code})?`,
+        () => {
+          appState.inventory = appState.inventory.filter(i => i.id !== id);
+          logAudit('ITEM_DELETED', `${item.code} - ${item.name}`, `-${item.qty}`);
+          saveLocalState();
+          refreshAllViews();
+          showToast('Item deleted by Admin.', 'info');
+        }
+      );
+    }
+
+    function renderInventoryTable() {
+      const q = (document.getElementById('inv-search')?.value || '').toLowerCase().trim();
+      const rackFilter = document.getElementById('inv-rack-filter')?.value || '';
+      const lowOnly = document.getElementById('inv-low-stock-only')?.checked || false;
+      const isAdmin = currentUserRole === 'admin';
+
+      const totalSkus = appState.inventory.length;
+      const totalQty = appState.inventory.reduce((sum, i) => sum + Number(i.qty || 0), 0);
+      const sellingVal = appState.inventory.reduce((sum, i) => sum + (Number(i.qty || 0) * Number(i.sellingPrice || 0)), 0);
+      const costVal = appState.inventory.reduce((sum, i) => sum + (Number(i.qty || 0) * Number(i.costPrice || 0)), 0);
+
+      document.getElementById('stat-total-skus').textContent = totalSkus;
+      document.getElementById('stat-total-qty').textContent = totalQty;
+      document.getElementById('stat-selling-val').textContent = formatCurrency(sellingVal);
+      if (isAdmin) {
+        document.getElementById('stat-cost-val').textContent = formatCurrency(costVal);
+      }
+
+      const filtered = appState.inventory.filter(item => {
+        const matchesQuery = !q ||
+          item.name.toLowerCase().includes(q) ||
+          item.code.toLowerCase().includes(q) ||
+          item.brand.toLowerCase().includes(q) ||
+          item.category.toLowerCase().includes(q) ||
+          item.bikeModel.toLowerCase().includes(q) ||
+          item.rack.toLowerCase().includes(q);
+        const matchesRack = !rackFilter || item.rack === rackFilter;
+        const isLow = item.qty <= (item.lowStockLimit || 5);
+        return matchesQuery && matchesRack && (!lowOnly || isLow);
+      });
+
+      const tbody = document.getElementById('inventory-tbody');
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">No matching stock items found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => {
+        const isLow = item.qty <= (item.lowStockLimit || 5);
+        const stockBadge = item.qty === 0
+          ? `<span class="px-2 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-500/40 font-bold text-xs">OUT (0)</span>`
+          : isLow
+            ? `<span class="px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-500/40 font-bold text-xs">LOW (${item.qty})</span>`
+            : `<span class="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 font-bold text-xs">${item.qty}</span>`;
+
+        return `
+          <tr class="hover:bg-charcoal/50 transition">
+            <td class="p-3">
+              <div class="font-mono font-bold text-gold text-xs">${escapeHtml(item.code)}</div>
+              <span class="inline-block mt-0.5 px-2 py-0.5 rounded bg-obsidian border border-gold/25 text-[11px] font-bold text-gray-300">Rack: ${escapeHtml(item.rack)}</span>
+            </td>
+            <td class="p-3">
+              <div class="font-bold text-white">${escapeHtml(item.name)}</div>
+              <div class="text-xs text-gold/80">🏍️/🛺 ${escapeHtml(item.bikeModel)}</div>
+            </td>
+            <td class="p-3">
+              <div class="text-gray-200 font-medium">${escapeHtml(item.brand)}</div>
+              <div class="text-xs text-gray-400">${escapeHtml(item.category)}</div>
+            </td>
+            <td class="p-3 text-center">${stockBadge}</td>
+            ${isAdmin ? `<td class="p-3 text-right font-mono text-gray-400">${formatCurrency(item.costPrice)}</td>` : ''}
+            <td class="p-3 text-right font-mono font-bold text-emerald-400">${formatCurrency(item.sellingPrice)}</td>
+            ${isAdmin ? `
+              <td class="p-3 text-right whitespace-nowrap">
+                <button onclick="editInventoryItem('${item.id}')" class="px-2.5 py-1 rounded-lg bg-charcoal hover:bg-gold/20 text-gold text-xs font-semibold mr-1">Edit</button>
+                <button onclick="deleteInventoryItem('${item.id}')" class="px-2.5 py-1 rounded-lg bg-red-950/60 hover:bg-red-900 text-red-400 text-xs font-semibold">Delete</button>
+              </td>
+            ` : ''}
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ==================== POS BILLING & CART ====================
+    function renderPosCatalog() {
+      const q = (document.getElementById('pos-search-input')?.value || '').toLowerCase().trim();
+      const rack = document.getElementById('pos-rack-filter')?.value || '';
+
+      const items = appState.inventory.filter(item => {
+        const matchQ = !q ||
+          item.name.toLowerCase().includes(q) ||
+          item.code.toLowerCase().includes(q) ||
+          item.brand.toLowerCase().includes(q) ||
+          item.category.toLowerCase().includes(q) ||
+          item.bikeModel.toLowerCase().includes(q) ||
+          item.rack.toLowerCase().includes(q);
+        const matchRack = !rack || item.rack === rack;
+        return matchQ && matchRack;
+      });
+
+      const grid = document.getElementById('pos-catalog-grid');
+      if (!items.length) {
+        grid.innerHTML = `<div class="col-span-full bg-onyx border border-gold/20 rounded-2xl p-8 text-center text-sm text-gray-500">No spare parts match your search.</div>`;
+        return;
+      }
+
+      grid.innerHTML = items.map(item => {
+        const outOfStock = item.qty <= 0;
+        const isLow = item.qty > 0 && item.qty <= (item.lowStockLimit || 5);
+        return `
+          <div class="bg-onyx border ${outOfStock ? 'border-red-900/40 opacity-60' : 'border-gold/25 hover:border-gold'} rounded-2xl p-3.5 flex flex-col justify-between transition">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-[11px] font-mono font-bold text-gold">${escapeHtml(item.code)} • ${escapeHtml(item.rack)}</span>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${outOfStock ? 'bg-red-950 text-red-400' : isLow ? 'bg-amber-950 text-amber-400' : 'bg-emerald-950 text-emerald-400'}">
+                  Stock: ${item.qty}
+                </span>
+              </div>
+              <h3 class="font-bold text-sm text-white leading-snug">${escapeHtml(item.name)}</h3>
+              <p class="text-xs text-gold/80 mt-0.5">${escapeHtml(item.bikeModel)}</p>
+              <p class="text-[11px] text-gray-400">${escapeHtml(item.brand)} • ${escapeHtml(item.category)}</p>
+            </div>
+
+            <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-gold/15">
+              <span class="font-mono font-extrabold text-sm text-emerald-400">${formatCurrency(item.sellingPrice)}</span>
+              <button
+                type="button"
+                ${outOfStock ? 'disabled' : `onclick="addToCart('${item.id}')"`}
+                class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition ${outOfStock ? 'bg-charcoal text-gray-500 cursor-not-allowed' : 'gold-gradient text-obsidian shadow hover:opacity-90 active:scale-95'}"
+              >
+                ${outOfStock ? 'Out of Stock' : '+ Add to Bill'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addToCart(itemId) {
+      const stockItem = appState.inventory.find(i => i.id === itemId);
+      if (!stockItem || stockItem.qty <= 0) {
+        showToast('Out of stock!', 'error');
+        return;
+      }
+
+      const existing = cart.find(c => c.itemId === itemId);
+      if (existing) {
+        if (existing.qty + 1 > stockItem.qty) {
+          showToast(`Cannot exceed available stock! (Available: ${stockItem.qty})`, 'error');
+          return;
+        }
+        existing.qty += 1;
+      } else {
+        cart.push({
+          itemId: stockItem.id,
+          code: stockItem.code,
+          name: stockItem.name,
+          bikeModel: stockItem.bikeModel,
+          rack: stockItem.rack,
+          costPrice: Number(stockItem.costPrice),
+          sellingPrice: Number(stockItem.sellingPrice),
+          qty: 1
+        });
+      }
+      renderCart();
+    }
+
+    function updateCartItemQty(itemId, newQty) {
+      const stockItem = appState.inventory.find(i => i.id === itemId);
+      const parsed = parseInt(newQty, 10);
+      if (!parsed || parsed <= 0) {
+        cart = cart.filter(c => c.itemId !== itemId);
+      } else if (stockItem && parsed > stockItem.qty) {
+        showToast(`Available stock is only ${stockItem.qty}!`, 'error');
+        const entry = cart.find(c => c.itemId === itemId);
+        if (entry) entry.qty = stockItem.qty;
+      } else {
+        const entry = cart.find(c => c.itemId === itemId);
+        if (entry) entry.qty = parsed;
+      }
+      renderCart();
+    }
+
+    function clearCart() {
+      cart = [];
+      document.getElementById('pos-discount-input').value = 0;
+      renderCart();
+    }
+
+    function renderCart() {
+      const container = document.getElementById('pos-cart-items');
+      if (!cart.length) {
+        container.innerHTML = `<div class="text-center py-8 text-xs text-gray-500">Select items from catalog</div>`;
+        updateCartTotals();
+        return;
+      }
+
+      container.innerHTML = cart.map(item => `
+        <div class="bg-obsidian border border-gold/20 rounded-xl p-2.5 flex items-center justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-bold text-white truncate">${escapeHtml(item.name)}</div>
+            <div class="text-[11px] text-gray-400 font-mono">${escapeHtml(item.code)} • ${formatCurrency(item.sellingPrice)} each</div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" onclick="updateCartItemQty('${item.itemId}', ${item.qty - 1})" class="w-7 h-7 rounded-lg bg-charcoal hover:bg-graphite text-gold font-bold text-sm">-</button>
+            <input type="number" min="1" value="${item.qty}" onchange="updateCartItemQty('${item.itemId}', this.value)" class="w-11 text-center py-1 rounded-lg bg-charcoal border border-gold/25 text-xs font-bold text-white" />
+            <button type="button" onclick="updateCartItemQty('${item.itemId}', ${item.qty + 1})" class="w-7 h-7 rounded-lg bg-charcoal hover:bg-graphite text-gold font-bold text-sm">+</button>
+          </div>
+          <div class="text-right font-mono font-bold text-xs text-emerald-400 w-20 shrink-0">
+            ${formatCurrency(item.qty * item.sellingPrice)}
+          </div>
+        </div>
+      `).join('');
+
+      updateCartTotals();
+    }
+
+    function calculateCartTotals() {
+      const subtotal = cart.reduce((sum, i) => sum + (i.qty * i.sellingPrice), 0);
+      const discType = document.getElementById('pos-discount-type').value;
+      const discInput = Math.max(0, parseFloat(document.getElementById('pos-discount-input').value) || 0);
+      let discountAmount = discType === 'percent' ? (subtotal * Math.min(discInput, 100)) / 100 : discInput;
+      if (discountAmount > subtotal) discountAmount = subtotal;
+      const grandTotal = subtotal - discountAmount;
+      return { subtotal, discountAmount, grandTotal };
+    }
+
+    function updateCartTotals() {
+      const { subtotal, discountAmount, grandTotal } = calculateCartTotals();
+      document.getElementById('pos-subtotal').textContent = formatCurrency(subtotal);
+      document.getElementById('pos-discount-display').textContent = `- ${formatCurrency(discountAmount)}`;
+      document.getElementById('pos-grand-total').textContent = formatCurrency(grandTotal);
+    }
+
+    function updateNextBillPreview() {
+      const year = new Date().getFullYear();
+      const billNo = `INV-${year}-${String(appState.nextBillSeq).padStart(4, '0')}`;
+      const el = document.getElementById('next-bill-preview');
+      if (el) el.textContent = billNo;
+    }
+
+    async function completeSale() {
+      if (isProcessingSale) return;
+      if (!cart.length) {
+        showToast('Cart is empty!', 'error');
+        return;
+      }
+
+      isProcessingSale = true;
+      const btn = document.getElementById('complete-sale-btn');
+      btn.disabled = true;
+      btn.classList.add('opacity-60');
+
+      try {
+        for (const cItem of cart) {
+          const liveStock = appState.inventory.find(i => i.id === cItem.itemId);
+          if (!liveStock || liveStock.qty < cItem.qty) {
+            throw new Error(`Insufficient stock for ${cItem.name}. Available: ${liveStock ? liveStock.qty : 0}`);
+          }
+        }
+
+        const { subtotal, discountAmount, grandTotal } = calculateCartTotals();
+        const year = new Date().getFullYear();
+        const billNumber = `INV-${year}-${String(appState.nextBillSeq).padStart(4, '0')}`;
+        const customerName = document.getElementById('pos-cust-name').value.trim() || 'Walk-in Customer';
+        const customerPhone = document.getElementById('pos-cust-phone').value.trim() || '-';
+        const paymentType = document.getElementById('pos-payment-type').value;
+        const now = new Date().toISOString();
+
+        const billRecord = {
+          id: 'bill_' + Date.now(),
+          billNumber,
+          date: now,
+          customerName,
+          customerPhone,
+          paymentType,
+          items: cart.map(c => ({ ...c })),
+          subtotal,
+          discountAmount,
+          grandTotal,
+          soldBy: currentUserRole.toUpperCase()
+        };
+
+        if (firestoreDb) {
+          const docRef = firestoreDb.collection('s3_motors_pos').doc('main_store');
+          await firestoreDb.runTransaction(async (transaction) => {
+            const snap = await transaction.get(docRef);
+            let stateToMutate = snap.exists && snap.data().payload ? JSON.parse(snap.data().payload) : appState;
+
+            for (const cItem of billRecord.items) {
+              const target = stateToMutate.inventory.find(i => i.id === cItem.itemId);
+              if (!target || target.qty < cItem.qty) {
+                throw new Error(`Concurrent sale conflict: ${cItem.name} stock insufficient.`);
+              }
+              target.qty -= cItem.qty;
+            }
+            stateToMutate.nextBillSeq = (stateToMutate.nextBillSeq || 1) + 1;
+            stateToMutate.bills.unshift(billRecord);
+            billRecord.items.forEach(bi => {
+              stateToMutate.auditLogs.unshift({
+                id: 'log_' + Date.now() + '_' + bi.code,
+                timestamp: now,
+                user: currentUserRole.toUpperCase(),
+                action: 'SALE_DEDUCTED',
+                detail: `${billNumber} | ${bi.code} - ${bi.name}`,
+                qtyChange: `-${bi.qty}`
+              });
+            });
+
+            appState = stateToMutate;
+            transaction.set(docRef, {
+              payload: JSON.stringify(appState),
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+          });
+        } else {
+          for (const cItem of billRecord.items) {
+            const target = appState.inventory.find(i => i.id === cItem.itemId);
+            target.qty -= cItem.qty;
+            logAudit('SALE_DEDUCTED', `${billNumber} | ${cItem.code} - ${cItem.name}`, `-${cItem.qty}`);
+          }
+          appState.nextBillSeq += 1;
+          appState.bills.unshift(billRecord);
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+
+        cart = [];
+        document.getElementById('pos-cust-name').value = '';
+        document.getElementById('pos-cust-phone').value = '';
+        document.getElementById('pos-discount-input').value = 0;
+
+        refreshAllViews();
+        showToast(`Sale completed successfully! Bill ${billNumber} created & PDF downloading...`, 'success');
+
+        openBillPreviewModal(billRecord);
+        await generateAndDownloadBillPDF(billRecord);
+      } catch (err) {
+        showToast(err.message || 'Sale failed!', 'error');
+      } finally {
+        isProcessingSale = false;
+        btn.disabled = false;
+        btn.classList.remove('opacity-60');
+      }
+    }
+
+    // ==================== PDF RECEIPT GENERATION ====================
+    function openBillPreviewModal(bill) {
+      document.getElementById('modal-bill-meta').textContent = `${bill.billNumber} • ${formatDateTime(bill.date)}`;
+      document.getElementById('modal-bill-customer').innerHTML = `
+        <div>
+          <span class="text-gray-400">Customer:</span> <strong class="text-white">${escapeHtml(bill.customerName)}</strong>
+          <span class="text-gray-500 mx-1.5">|</span>
+          <span class="text-gray-400">Tel:</span> <strong class="text-gray-200">${escapeHtml(bill.customerPhone)}</strong>
+        </div>
+        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${bill.paymentType === 'Cash' ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30' : 'bg-amber-950 text-amber-400 border border-amber-500/30'}">${bill.paymentType}</span>
+      `;
+
+      document.getElementById('modal-bill-items').innerHTML = bill.items.map(i => `
+        <tr>
+          <td class="p-2.5">
+            <div class="font-bold text-white">${escapeHtml(i.name)}</div>
+            <div class="text-[10px] text-gray-400">${escapeHtml(i.code)} (${escapeHtml(i.rack)})</div>
+          </td>
+          <td class="p-2.5 text-center font-bold">${i.qty}</td>
+          <td class="p-2.5 text-right font-mono">${formatCurrency(i.sellingPrice)}</td>
+          <td class="p-2.5 text-right font-mono font-bold text-gold">${formatCurrency(i.qty * i.sellingPrice)}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('modal-bill-totals').innerHTML = `
+        <div class="flex justify-between text-gray-400"><span>Subtotal:</span><span class="font-mono">${formatCurrency(bill.subtotal)}</span></div>
+        <div class="flex justify-between text-amber-400"><span>Discount:</span><span class="font-mono">- ${formatCurrency(bill.discountAmount)}</span></div>
+        <div class="flex justify-between text-base font-black text-gold pt-1.5 border-t border-gold/20"><span>NET TOTAL:</span><span class="font-mono">${formatCurrency(bill.grandTotal)}</span></div>
+      `;
+
+      const dlBtn = document.getElementById('modal-download-pdf-btn');
+      dlBtn.onclick = () => generateAndDownloadBillPDF(bill);
+
+      renderAllLogoSlots();
+      const modal = document.getElementById('bill-preview-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeBillModal() {
+      const modal = document.getElementById('bill-preview-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function generateAndDownloadBillPDF(bill) {
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const logoDataUrl = await buildHighResEmblemPng();
+
+        doc.setFillColor(10, 10, 10);
+        doc.rect(0, 0, 210, 44, 'F');
+        doc.setDrawColor(212, 175, 55);
+        doc.setLineWidth(0.8);
+        doc.line(0, 44, 210, 44);
+
+        if (logoDataUrl) {
+          doc.addImage(logoDataUrl, 'PNG', 14, 5, 34, 34);
+        }
+
+        doc.setTextColor(245, 208, 97);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.text('S3 MOTORS', 54, 18);
+
+        doc.setFontSize(9.5);
+        doc.setTextColor(212, 175, 55);
+        doc.text('BIKE & THREE WHEEL PARTS  |  SPARE PARTS & INVENTORY', 54, 25);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(210, 210, 210);
+        doc.text(`Invoice No: ${bill.billNumber}`, 54, 33);
+        doc.text(`Date: ${formatDateTime(bill.date)}   |   Payment: ${bill.paymentType.toUpperCase()}`, 54, 38.5);
+
+        doc.setTextColor(20, 20, 20);
+        doc.setFillColor(248, 246, 240);
+        doc.roundedRect(14, 50, 182, 16, 2, 2, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.text(`Customer Name: ${bill.customerName}`, 18, 57);
+        doc.text(`Phone: ${bill.customerPhone}`, 130, 57);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.text(`Billed By: ${bill.soldBy}`, 18, 62.5);
+
+        let y = 74;
+        doc.setFillColor(18, 18, 18);
+        doc.rect(14, y, 182, 8, 'F');
+        doc.setTextColor(245, 208, 97);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('#', 17, y + 5.5);
+        doc.text('Code', 25, y + 5.5);
+        doc.text('Spare Part Description', 50, y + 5.5);
+        doc.text('Qty', 132, y + 5.5, { align: 'right' });
+        doc.text('Unit Price', 162, y + 5.5, { align: 'right' });
+        doc.text('Total (Rs.)', 193, y + 5.5, { align: 'right' });
+
+        y += 13;
+        doc.setTextColor(25, 25, 25);
+        doc.setFont('helvetica', 'normal');
+        bill.items.forEach((item, index) => {
+          if (y > 265) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(String(index + 1), 17, y);
+          doc.text(item.code, 25, y);
+          doc.text(`${item.name} (${item.bikeModel})`.slice(0, 42), 50, y);
+          doc.text(String(item.qty), 132, y, { align: 'right' });
+          doc.text(Number(item.sellingPrice).toFixed(2), 162, y, { align: 'right' });
+          doc.text((item.qty * item.sellingPrice).toFixed(2), 193, y, { align: 'right' });
+          doc.setDrawColor(230, 230, 230);
+          doc.line(14, y + 2.5, 196, y + 2.5);
+          y += 8;
+        });
+
+        y += 4;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text('Subtotal:', 145, y);
+        doc.text(`Rs. ${Number(bill.subtotal).toFixed(2)}`, 193, y, { align: 'right' });
+
+        y += 6;
+        doc.text('Discount:', 145, y);
+        doc.text(`- Rs. ${Number(bill.discountAmount).toFixed(2)}`, 193, y, { align: 'right' });
+
+        y += 4;
+        doc.setFillColor(10, 10, 10);
+        doc.roundedRect(128, y, 68, 11, 2, 2, 'F');
+        doc.setTextColor(245, 208, 97);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('NET TOTAL:', 132, y + 7.2);
+        doc.text(`Rs. ${Number(bill.grandTotal).toFixed(2)}`, 193, y + 7.2, { align: 'right' });
+
+        doc.setTextColor(110, 110, 110);
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(8.5);
+        doc.text('Thank you for choosing S3 MOTORS — Quality Bike & Three-Wheel Spare Parts!', 105, 285, { align: 'center' });
+
+        doc.save(`${bill.billNumber}_S3_MOTORS.pdf`);
+      } catch (err) {
+        console.error('PDF error:', err);
+        showToast('Could not generate PDF automatically.', 'error');
+      }
+    }
+
+    // ==================== BILL HISTORY & CUSTOMERS ====================
+    function populateCustomerDatalist() {
+      const dl = document.getElementById('customer-datalist');
+      if (!dl) return;
+      const uniqueNames = [...new Set(appState.bills.map(b => b.customerName).filter(n => n && n !== 'Walk-in Customer'))];
+      dl.innerHTML = uniqueNames.map(n => `<option value="${escapeHtml(n)}">`).join('');
+    }
+
+    function autofillCustomerPhone() {
+      const name = document.getElementById('pos-cust-name').value.trim().toLowerCase();
+      if (!name) return;
+      const found = appState.bills.find(b => b.customerName.toLowerCase() === name && b.customerPhone !== '-');
+      if (found) {
+        document.getElementById('pos-cust-phone').value = found.customerPhone;
+      }
+    }
+
+    function renderBillsHistory() {
+      const q = (document.getElementById('bills-search')?.value || '').toLowerCase().trim();
+      const payFilter = document.getElementById('bills-payment-filter')?.value || '';
+      const isAdmin = currentUserRole === 'admin';
+
+      const filtered = appState.bills.filter(b => {
+        const matchQ = !q ||
+          b.billNumber.toLowerCase().includes(q) ||
+          b.customerName.toLowerCase().includes(q) ||
+          b.customerPhone.toLowerCase().includes(q);
+        const matchPay = !payFilter || b.paymentType === payFilter;
+        return matchQ && matchPay;
+      });
+
+      const tbody = document.getElementById('bills-tbody');
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">No bills recorded yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(b => `
+        <tr class="hover:bg-charcoal/50 transition">
+          <td class="p-3">
+            <div class="font-mono font-bold text-gold">${escapeHtml(b.billNumber)}</div>
+            <div class="text-[11px] text-gray-400">${formatDateTime(b.date)}</div>
+          </td>
+          <td class="p-3">
+            <div class="font-semibold text-white">${escapeHtml(b.customerName)}</div>
+            <div class="text-xs text-gray-400">${escapeHtml(b.customerPhone)}</div>
+          </td>
+          <td class="p-3 text-xs text-gray-300">
+            ${b.items.map(i => `${escapeHtml(i.name)} ×${i.qty}`).join(', ')}
+          </td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${b.paymentType === 'Cash' ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'}">${b.paymentType}</span>
+          </td>
+          <td class="p-3 text-right font-mono text-amber-400">${formatCurrency(b.discountAmount)}</td>
+          <td class="p-3 text-right font-mono font-bold text-emerald-400">${formatCurrency(b.grandTotal)}</td>
+          <td class="p-3 text-right whitespace-nowrap">
+            <button onclick="reopenBillById('${b.id}')" class="px-2.5 py-1 rounded-lg bg-gold/20 hover:bg-gold/30 text-gold text-xs font-bold mr-1">View / PDF</button>
+            ${isAdmin ? `<button onclick="deleteBillRecord('${b.id}')" class="px-2 py-1 rounded-lg bg-red-950/60 text-red-400 text-xs">Delete</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function reopenBillById(billId) {
+      const bill = appState.bills.find(b => b.id === billId);
+      if (bill) openBillPreviewModal(bill);
+    }
+
+    function deleteBillRecord(billId) {
+      if (currentUserRole !== 'admin') return;
+      const bill = appState.bills.find(b => b.id === billId);
+      if (!bill) return;
+      showConfirm('Delete Bill Record', `Delete bill ${bill.billNumber}? (Admin Only)`, () => {
+        appState.bills = appState.bills.filter(b => b.id !== billId);
+        logAudit('BILL_DELETED', bill.billNumber, '0');
+        saveLocalState();
+        refreshAllViews();
+        showToast('Bill record deleted.', 'info');
+      });
+    }
+
+    // ==================== RETURNS & REFUNDS ====================
+    function lookupBillForReturn() {
+      const q = document.getElementById('return-bill-search').value.trim().toLowerCase();
+      if (!q) {
+        showToast('Enter a Bill Number to search.', 'error');
+        return;
+      }
+      const bill = appState.bills.find(b => b.billNumber.toLowerCase() === q || b.billNumber.toLowerCase().includes(q));
+      if (!bill) {
+        showToast('Bill not found!', 'error');
+        document.getElementById('return-bill-workspace').classList.add('hidden');
+        return;
+      }
+      activeReturnBill = bill;
+      document.getElementById('return-bill-workspace').classList.remove('hidden');
+      document.getElementById('return-bill-header').innerHTML = `
+        <div><span class="text-gray-400">Bill:</span> <strong class="text-gold font-mono">${bill.billNumber}</strong> • <span class="text-gray-400">Customer:</span> <strong class="text-white">${escapeHtml(bill.customerName)}</strong></div>
+        <div class="text-gray-400">${formatDateTime(bill.date)}</div>
+      `;
+
+      document.getElementById('return-items-list').innerHTML = bill.items.map((item, idx) => `
+        <div class="flex flex-wrap items-center justify-between gap-2 bg-charcoal p-3 rounded-xl border border-gold/15">
+          <div>
+            <div class="text-xs font-bold text-white">${escapeHtml(item.name)} (${escapeHtml(item.code)})</div>
+            <div class="text-[11px] text-gray-400">Sold Qty: ${item.qty} • Sold Price: ${formatCurrency(item.sellingPrice)}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-400">Return Qty:</label>
+            <input type="number" min="0" max="${item.qty}" value="0" data-ret-idx="${idx}" oninput="recalcReturnRefund()" class="return-qty-input w-16 px-2 py-1.5 rounded-lg bg-obsidian border border-gold/30 text-xs font-bold text-white text-center" />
+          </div>
+        </div>
+      `).join('');
+      recalcReturnRefund();
+    }
+
+    function recalcReturnRefund() {
+      if (!activeReturnBill) return;
+      let totalRefund = 0;
+      const discountRatio = activeReturnBill.subtotal > 0 ? (activeReturnBill.discountAmount / activeReturnBill.subtotal) : 0;
+
+      document.querySelectorAll('.return-qty-input').forEach(inp => {
+        const idx = parseInt(inp.dataset.retIdx, 10);
+        const qty = Math.min(Math.max(0, parseInt(inp.value, 10) || 0), activeReturnBill.items[idx].qty);
+        inp.value = qty;
+        const gross = qty * activeReturnBill.items[idx].sellingPrice;
+        totalRefund += gross * (1 - discountRatio);
+      });
+      document.getElementById('return-refund-total').textContent = formatCurrency(totalRefund);
+    }
+
+    function processReturnSubmission() {
+      if (!activeReturnBill) return;
+      const returnedItems = [];
+      let totalRefund = 0;
+      let totalReturnedProfit = 0;
+      const discountRatio = activeReturnBill.subtotal > 0 ? (activeReturnBill.discountAmount / activeReturnBill.subtotal) : 0;
+
+      document.querySelectorAll('.return-qty-input').forEach(inp => {
+        const idx = parseInt(inp.dataset.retIdx, 10);
+        const qty = parseInt(inp.value, 10) || 0;
+        if (qty > 0) {
+          const orig = activeReturnBill.items[idx];
+          const effectiveSellPrice = orig.sellingPrice * (1 - discountRatio);
+          const refundLine = effectiveSellPrice * qty;
+          const profitLost = (effectiveSellPrice - orig.costPrice) * qty;
+
+          totalRefund += refundLine;
+          totalReturnedProfit += profitLost;
+          returnedItems.push({ ...orig, returnQty: qty, refundAmount: refundLine });
+
+          const stockTarget = appState.inventory.find(i => i.id === orig.itemId);
+          if (stockTarget) {
+            stockTarget.qty += qty;
+          }
+          logAudit('RETURN_RESTOCKED', `${activeReturnBill.billNumber} | ${orig.code} - ${orig.name}`, `+${qty}`);
+        }
+      });
+
+      if (!returnedItems.length) {
+        showToast('Please select at least 1 item quantity to return.', 'error');
+        return;
+      }
+
+      appState.returns.unshift({
+        id: 'ret_' + Date.now(),
+        date: new Date().toISOString(),
+        billNumber: activeReturnBill.billNumber,
+        items: returnedItems,
+        refundAmount: totalRefund,
+        profitReversed: totalReturnedProfit,
+        processedBy: currentUserRole.toUpperCase()
+      });
+
+      saveLocalState();
+      activeReturnBill = null;
+      document.getElementById('return-bill-workspace').classList.add('hidden');
+      document.getElementById('return-bill-search').value = '';
+      refreshAllViews();
+      showToast(`Return processed! Refund: ${formatCurrency(totalRefund)} & Stock restored.`, 'success');
+    }
+
+    function renderReturnsHistory() {
+      const tbody = document.getElementById('returns-history-tbody');
+      if (!appState.returns.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No returns recorded.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = appState.returns.map(r => `
+        <tr>
+          <td class="p-2.5 text-gray-400">${formatDateTime(r.date)}</td>
+          <td class="p-2.5 font-mono text-gold font-bold">${escapeHtml(r.billNumber)}</td>
+          <td class="p-2.5 text-white">${r.items.map(i => `${escapeHtml(i.name)} ×${i.returnQty}`).join(', ')}</td>
+          <td class="p-2.5 text-right font-mono text-red-400 font-bold">${formatCurrency(r.refundAmount)}</td>
+          <td class="p-2.5 text-gray-300">${escapeHtml(r.processedBy)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ==================== SUPPLIER PURCHASES (ADMIN ONLY) ====================
+    function populatePurchaseItemDropdown() {
+      const sel = document.getElementById('pur-item-select');
+      if (!sel) return;
+      sel.innerHTML = `<option value="">-- Choose Stock Item --</option>` +
+        appState.inventory.map(i => `<option value="${i.id}">${escapeHtml(i.code)} - ${escapeHtml(i.name)} (${escapeHtml(i.bikeModel)})</option>`).join('');
+    }
+
+    function prefillPurchaseCost() {
+      const id = document.getElementById('pur-item-select').value;
+      const item = appState.inventory.find(i => i.id === id);
+      if (item) {
+        document.getElementById('pur-unit-cost').value = item.costPrice;
+      }
+    }
+
+    function addPurchaseLine() {
+      const itemId = document.getElementById('pur-item-select').value;
+      const qty = parseInt(document.getElementById('pur-qty').value, 10) || 0;
+      const unitCost = parseFloat(document.getElementById('pur-unit-cost').value) || 0;
+      const item = appState.inventory.find(i => i.id === itemId);
+
+      if (!item || qty <= 0 || unitCost < 0) {
+        showToast('Select valid item, quantity, and cost price.', 'error');
+        return;
+      }
+
+      purchaseDraftLines.push({
+        itemId: item.id,
+        code: item.code,
+        name: item.name,
+        qty,
+        unitCost,
+        lineTotal: qty * unitCost
+      });
+      renderPurchaseDraftLines();
+    }
+
+    function removePurchaseLine(idx) {
+      purchaseDraftLines.splice(idx, 1);
+      renderPurchaseDraftLines();
+    }
+
+    function renderPurchaseDraftLines() {
+      const list = document.getElementById('pur-lines-list');
+      const total = purchaseDraftLines.reduce((s, l) => s + l.lineTotal, 0);
+      document.getElementById('pur-total-cost').textContent = formatCurrency(total);
+
+      if (!purchaseDraftLines.length) {
+        list.innerHTML = `<div class="text-xs text-gray-500 text-center py-3">No items added to this purchase bill yet.</div>`;
+        return;
+      }
+      list.innerHTML = purchaseDraftLines.map((l, idx) => `
+        <div class="flex items-center justify-between bg-obsidian px-3 py-2 rounded-xl border border-gold/20 text-xs">
+          <div><strong class="text-gold font-mono">${escapeHtml(l.code)}</strong> ${escapeHtml(l.name)} × <strong>${l.qty}</strong> @ ${formatCurrency(l.unitCost)}</div>
+          <div class="flex items-center gap-3">
+            <span class="font-mono font-bold text-white">${formatCurrency(l.lineTotal)}</span>
+            <button onclick="removePurchaseLine(${idx})" class="text-red-400 hover:underline">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function savePurchaseBill() {
+      if (currentUserRole !== 'admin') return;
+      const supplierName = document.getElementById('pur-supplier-name').value.trim();
+      const supplierPhone = document.getElementById('pur-supplier-phone').value.trim();
+      const invoiceRef = document.getElementById('pur-invoice-ref').value.trim() || ('PUR-' + Date.now().toString().slice(-5));
+
+      if (!supplierName || !supplierPhone || !purchaseDraftLines.length) {
+        showToast('Enter supplier name, phone, and at least one purchased item.', 'error');
+        return;
+      }
+
+      const totalCost = purchaseDraftLines.reduce((s, l) => s + l.lineTotal, 0);
+      const now = new Date().toISOString();
+
+      purchaseDraftLines.forEach(line => {
+        const stockItem = appState.inventory.find(i => i.id === line.itemId);
+        if (stockItem) {
+          stockItem.qty += line.qty;
+          stockItem.costPrice = line.unitCost;
+          logAudit('PURCHASE_ADDED', `${invoiceRef} (${supplierName}) | ${line.code} - ${line.name}`, `+${line.qty}`);
+        }
+      });
+
+      appState.purchases.unshift({
+        id: 'pur_' + Date.now(),
+        date: now,
+        supplierName,
+        supplierPhone,
+        invoiceRef,
+        items: [...purchaseDraftLines],
+        totalCost
+      });
+
+      purchaseDraftLines = [];
+      document.getElementById('pur-supplier-name').value = '';
+      document.getElementById('pur-supplier-phone').value = '';
+      document.getElementById('pur-invoice-ref').value = '';
+      renderPurchaseDraftLines();
+      saveLocalState();
+      refreshAllViews();
+      showToast(`Purchase Bill saved! Stock automatically increased.`, 'success');
+    }
+
+    function renderPurchaseHistory() {
+      const tbody = document.getElementById('purchase-history-tbody');
+      if (!tbody) return;
+      if (!appState.purchases.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">No supplier purchases recorded yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = appState.purchases.map(p => `
+        <tr>
+          <td class="p-2.5">
+            <div class="font-mono text-gold font-bold">${escapeHtml(p.invoiceRef)}</div>
+            <div class="text-[11px] text-gray-400">${formatDateTime(p.date)}</div>
+          </td>
+          <td class="p-2.5">
+            <div class="font-bold text-white">${escapeHtml(p.supplierName)}</div>
+            <div class="text-xs text-gray-400">${escapeHtml(p.supplierPhone)}</div>
+          </td>
+          <td class="p-2.5 text-gray-300">${p.items.map(i => `${escapeHtml(i.name)} ×${i.qty}`).join(', ')}</td>
+          <td class="p-2.5 text-right font-mono font-bold text-amber-400">${formatCurrency(p.totalCost)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ==================== PROFIT REPORTS & AUDIT LOG ====================
+    function setReportPeriod(period) {
+      currentReportPeriod = period;
+      document.querySelectorAll('.report-period-btn').forEach(btn => {
+        if (btn.dataset.period === period) {
+          btn.className = 'report-period-btn px-3 py-1.5 rounded-lg text-xs font-bold gold-gradient text-obsidian';
+        } else {
+          btn.className = 'report-period-btn px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white';
+        }
+      });
+      renderProfitReports();
+    }
+
+    function isWithinPeriod(isoDate, period) {
+      if (period === 'all') return true;
+      const d = new Date(isoDate);
+      const now = new Date();
+      if (period === 'daily') {
+        return d.toDateString() === now.toDateString();
+      }
+      if (period === 'weekly') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return d >= weekAgo;
+      }
+      if (period === 'monthly') {
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }
+      return true;
+    }
+
+    function renderProfitReports() {
+      if (currentUserRole !== 'admin') return;
+
+      const filteredBills = appState.bills.filter(b => isWithinPeriod(b.date, currentReportPeriod));
+      const filteredReturns = appState.returns.filter(r => isWithinPeriod(r.date, currentReportPeriod));
+
+      let grossSales = 0;
+      let cashSales = 0;
+      let creditSales = 0;
+      let totalDiscounts = 0;
+      let grossProfitBeforeReturns = 0;
+
+      const itemStats = {};
+      appState.inventory.forEach(inv => {
+        itemStats[inv.code] = { name: inv.name, code: inv.code, soldQty: 0, profit: 0 };
+      });
+
+      filteredBills.forEach(bill => {
+        grossSales += bill.grandTotal;
+        totalDiscounts += bill.discountAmount;
+        if (bill.paymentType === 'Cash') cashSales += bill.grandTotal;
+        else creditSales += bill.grandTotal;
+
+        const totalBillCost = bill.items.reduce((s, i) => s + (i.costPrice * i.qty), 0);
+        const billProfit = bill.grandTotal - totalBillCost;
+        grossProfitBeforeReturns += billProfit;
+
+        const discRatio = bill.subtotal > 0 ? (bill.discountAmount / bill.subtotal) : 0;
+        bill.items.forEach(i => {
+          if (!itemStats[i.code]) {
+            itemStats[i.code] = { name: i.name, code: i.code, soldQty: 0, profit: 0 };
+          }
+          itemStats[i.code].soldQty += i.qty;
+          const netLineRev = (i.sellingPrice * (1 - discRatio)) * i.qty;
+          itemStats[i.code].profit += (netLineRev - (i.costPrice * i.qty));
+        });
+      });
+
+      const totalRefunds = filteredReturns.reduce((s, r) => s + r.refundAmount, 0);
+      const reversedProfit = filteredReturns.reduce((s, r) => s + (r.profitReversed || 0), 0);
+      const netSales = grossSales - totalRefunds;
+      const trueNetProfit = grossProfitBeforeReturns - reversedProfit;
+      const currentStockCost = appState.inventory.reduce((s, i) => s + (i.qty * i.costPrice), 0);
+
+      document.getElementById('rep-total-sales').textContent = formatCurrency(netSales);
+      document.getElementById('rep-net-profit').textContent = formatCurrency(trueNetProfit);
+      document.getElementById('rep-cash-sales').textContent = formatCurrency(cashSales);
+      document.getElementById('rep-credit-sales').textContent = formatCurrency(creditSales);
+      document.getElementById('rep-total-discounts').textContent = formatCurrency(totalDiscounts);
+      document.getElementById('rep-total-returns').textContent = formatCurrency(totalRefunds);
+      document.getElementById('rep-stock-cost-val').textContent = formatCurrency(currentStockCost);
+
+      const statsArr = Object.values(itemStats);
+      const topSelling = [...statsArr].sort((a, b) => b.soldQty - a.soldQty).slice(0, 5);
+      const topProfit = [...statsArr].sort((a, b) => b.profit - a.profit).slice(0, 5);
+      const slowMoving = [...statsArr].sort((a, b) => a.soldQty - b.soldQty).slice(0, 5);
+
+      document.getElementById('rep-top-selling').innerHTML = topSelling.map(s => `
+        <div class="flex justify-between bg-obsidian px-3 py-2 rounded-xl border border-gold/15">
+          <span class="truncate pr-2 text-gray-200">${escapeHtml(s.name)}</span>
+          <span class="font-mono font-bold text-gold shrink-0">${s.soldQty} sold</span>
+        </div>
+      `).join('');
+
+      document.getElementById('rep-top-profit').innerHTML = topProfit.map(s => `
+        <div class="flex justify-between bg-obsidian px-3 py-2 rounded-xl border border-emerald-500/15">
+          <span class="truncate pr-2 text-gray-200">${escapeHtml(s.name)}</span>
+          <span class="font-mono font-bold text-emerald-400 shrink-0">${formatCurrency(s.profit)}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('rep-slow-moving').innerHTML = slowMoving.map(s => `
+        <div class="flex justify-between bg-obsidian px-3 py-2 rounded-xl border border-amber-500/15">
+          <span class="truncate pr-2 text-gray-200">${escapeHtml(s.name)}</span>
+          <span class="font-mono font-bold text-amber-400 shrink-0">${s.soldQty} sold</span>
+        </div>
+      `).join('');
+    }
+
+    function logAudit(action, detail, qtyChange) {
+      appState.auditLogs.unshift({
+        id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        timestamp: new Date().toISOString(),
+        user: (currentUserRole || 'SYSTEM').toUpperCase(),
+        action,
+        detail,
+        qtyChange
+      });
+      if (appState.auditLogs.length > 500) {
+        appState.auditLogs = appState.auditLogs.slice(0, 500);
+      }
+    }
+
+    function renderAuditLogs() {
+      const tbody = document.getElementById('audit-log-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = appState.auditLogs.slice(0, 100).map(l => `
+        <tr>
+          <td class="p-2.5 text-gray-400 whitespace-nowrap">${formatDateTime(l.timestamp)}</td>
+          <td class="p-2.5 font-bold text-gold">${escapeHtml(l.user)}</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded bg-charcoal text-[11px] font-mono text-gray-200">${escapeHtml(l.action)}</span></td>
+          <td class="p-2.5 text-gray-200">${escapeHtml(l.detail)}</td>
+          <td class="p-2.5 text-right font-mono font-bold ${String(l.qtyChange).startsWith('-') ? 'text-red-400' : 'text-emerald-400'}">${escapeHtml(l.qtyChange)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ==================== DAILY BACKUP & RESTORE ====================
+    function checkDailyAutoBackup() {
+      const now = Date.now();
+      const last = appState.lastBackupAt ? new Date(appState.lastBackupAt).getTime() : 0;
+      if (now - last > 24 * 60 * 60 * 1000) {
+        triggerDailyBackup(false);
+      }
+    }
+
+    function triggerDailyBackup(manualToast) {
+      const nowIso = new Date().toISOString();
+      appState.lastBackupAt = nowIso;
+      appState.dailySnapshots = [
+        { createdAt: nowIso, billCount: appState.bills.length, itemCount: appState.inventory.length },
+        ...(appState.dailySnapshots || []).slice(0, 6)
+      ];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      updateBackupTimestampUI();
+      if (manualToast) {
+        showToast('Cloud Backup snapshot saved successfully!', 'success');
+      }
+    }
+
+    function updateBackupTimestampUI() {
+      const el = document.getElementById('last-backup-time');
+      if (el) {
+        el.textContent = appState.lastBackupAt ? formatDateTime(appState.lastBackupAt) : 'Just now';
+      }
+    }
+
+    function exportBackupJSON() {
+      const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `S3_MOTORS_POS_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Backup JSON downloaded!', 'success');
+    }
+
+    function importBackupJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.inventory || !parsed.bills) {
+            throw new Error('Invalid S3 MOTORS backup file.');
+          }
+          showConfirm('Restore Database Backup', 'This will replace current inventory and sales records with the selected backup file. Continue?', () => {
+            appState = { ...appState, ...parsed };
+            logAudit('BACKUP_RESTORED', file.name, '0');
+            saveLocalState();
+            refreshAllViews();
+            showToast('Database restored successfully!', 'success');
+          });
+        } catch (err) {
+          showToast(err.message || 'Restore failed.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ==================== UTILITIES ====================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const styles = {
+        success: 'bg-onyx border-emerald-500 text-emerald-300',
+        error: 'bg-onyx border-red-500 text-red-300',
+        info: 'bg-onyx border-gold text-gold'
+      };
+      toast.className = `pointer-events-auto border-l-4 ${styles[type] || styles.info} rounded-xl px-4 py-3 shadow-2xl text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 transition-all`;
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3600);
+    }
+
+    function showConfirm(title, message, onConfirm) {
+      const modal = document.getElementById('confirm-modal');
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      };
+
+      document.getElementById('confirm-cancel-btn').onclick = cleanup;
+      document.getElementById('confirm-ok-btn').onclick = () => {
+        cleanup();
+        onConfirm();
+      };
+    }
+
+    function formatCurrency(val) {
+      return 'Rs. ' + Number(val || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDateTime(iso) {
+      if (!iso) return '-';
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function startHeaderClock() {
+      const update = () => {
+        const el = document.getElementById('header-clock');
+        if (el) el.textContent = new Date().toLocaleString('en-LK', { dateStyle: 'medium', timeStyle: 'short' });
+      };
+      update();
+      setInterval(update, 15000);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('login-screen').classList.contains('hidden')) {
+        if (/^[0-9]$/.test(e.key)) appendPin(e.key);
+        else if (e.key === 'Backspace') backspacePin();
+        else if (e.key === 'Enter') verifyLogin();
+      }
+    });
+
+    window.onload = async function () {
+      renderAllLogoSlots();
+      await initDefaultState();
+      initFirebaseFromSavedConfig();
+      startHeaderClock();
+    };
+  </script>
+</body>
+</html>
